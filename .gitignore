@@ -1,0 +1,17 @@
+# Archivos de entorno
+.env
+.env.*
+
+# Uploads generados por usuarios
+uploads/recursos/*
+!uploads/recursos/.gitkeep
+!uploads/recursos/.htaccess
+
+# Sistema operativo / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log

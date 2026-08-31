@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Logo 10 de Agosto">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="24" fill="url(#g)"/>
+  <path d="M36 78V42h14c10 0 16 5 16 13 0 5-2 9-7 11l10 12H54l-9-11h-5v11H36zm8-18h6c4 0 6-2 6-5s-2-5-6-5h-6v10z" fill="#fff"/>
+  <text x="60" y="98" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="11" font-weight="700">10 DE AGOSTO</text>
+</svg>

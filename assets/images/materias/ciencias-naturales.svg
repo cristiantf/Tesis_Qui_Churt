@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Ciencias Naturales">
+  <defs>
+    <linearGradient id="cn" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#cn)"/>
+  <circle cx="620" cy="110" r="48" fill="#fef08a" opacity="0.9"/>
+  <path d="M120 340c40-80 120-120 200-120s160 40 200 120" fill="none" stroke="#ecfdf5" stroke-width="8" stroke-linecap="round"/>
+  <path d="M400 220c-30 0-55 25-55 55s25 55 55 55 55-25 55-55-25-55-55-55z" fill="#ecfdf5" opacity="0.25"/>
+  <text x="400" y="380" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="42" font-weight="700">Ciencias Naturales</text>
+</svg>

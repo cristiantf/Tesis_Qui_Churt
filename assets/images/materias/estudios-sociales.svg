@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Estudios Sociales">
+  <defs>
+    <linearGradient id="es" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#es)"/>
+  <circle cx="400" cy="210" r="120" fill="none" stroke="#fff7ed" stroke-width="6" opacity="0.5"/>
+  <ellipse cx="400" cy="210" rx="120" ry="45" fill="none" stroke="#fff7ed" stroke-width="4" opacity="0.4"/>
+  <path d="M280 210h240M400 90v240" stroke="#fff7ed" stroke-width="3" opacity="0.35"/>
+  <text x="400" y="380" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="42" font-weight="700">Estudios Sociales</text>
+</svg>
