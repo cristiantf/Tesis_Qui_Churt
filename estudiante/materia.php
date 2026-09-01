@@ -17,22 +17,25 @@ if (!$materia) {
     exit;
 }
 
-$inscrito = $db->prepare("SELECT id FROM materia_estudiante WHERE materia_id = ? AND estudiante_id = ?");
-$inscrito->execute([$materiaId, $userId]);
+$gradoEstudiante = intval($_SESSION['user_grado'] ?? 0);
+$paraleloEstudiante = trim($_SESSION['user_paralelo'] ?? '');
+
+$inscrito = $db->prepare("SELECT id FROM materia_curso WHERE materia_id = ? AND grado = ? AND paralelo = ? LIMIT 1");
+$inscrito->execute([$materiaId, $gradoEstudiante, $paraleloEstudiante]);
 $inscrito = $inscrito->fetch();
 
 $theme = getMateriaThemeClass($materia['nombre']);
 
 $actividadesPendientes = $db->prepare("
     SELECT COUNT(*) FROM actividades a
-    WHERE a.materia_id = ? AND a.estado = 'publicada'
+    WHERE a.materia_id = ? AND a.grado = ? AND a.paralelo = ? AND a.estado = 'publicada'
       AND a.id NOT IN (SELECT actividad_id FROM entregas WHERE estudiante_id = ?)
 ");
-$actividadesPendientes->execute([$materiaId, $userId]);
+$actividadesPendientes->execute([$materiaId, $gradoEstudiante, $paraleloEstudiante, $userId]);
 $actividadesPendientes = $actividadesPendientes->fetchColumn();
 
-$totalRecursos = $db->prepare("SELECT COUNT(*) FROM recursos WHERE materia_id = ? AND estado = 1");
-$totalRecursos->execute([$materiaId]);
+$totalRecursos = $db->prepare("SELECT COUNT(*) FROM recursos WHERE materia_id = ? AND grado = ? AND paralelo = ?");
+$totalRecursos->execute([$materiaId, $gradoEstudiante, $paraleloEstudiante]);
 $totalRecursos = $totalRecursos->fetchColumn();
 
 $promedio = $db->prepare("

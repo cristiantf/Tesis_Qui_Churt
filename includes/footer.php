@@ -36,8 +36,55 @@
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- html2pdf JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <!-- Custom JS -->
 <script>
+// Función genérica para exportar un elemento a PDF
+function exportarAPDF(elementoId, nombreArchivo) {
+    const elemento = document.getElementById(elementoId);
+    if (!elemento) return;
+    
+    // Clonar para no modificar la vista original
+    const elementoClone = elemento.cloneNode(true);
+    // Eliminar botones u elementos que no queremos imprimir (con clase no-print)
+    const noPrint = elementoClone.querySelectorAll('.no-print, button');
+    noPrint.forEach(el => el.remove());
+    
+    // Añadir algunos estilos básicos al clon para PDF
+    elementoClone.style.padding = '20px';
+    elementoClone.style.backgroundColor = 'white';
+    
+    const opt = {
+        margin:       10,
+        filename:     nombreArchivo + '.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    html2pdf().set(opt).from(elementoClone).save();
+}
+
+// Función genérica para exportar texto plano
+function exportarATXT(titulo, descripcion, instrucciones, nombreArchivo) {
+    let contenido = titulo.toUpperCase() + "\n\n";
+    contenido += "DESCRIPCIÓN:\n" + descripcion + "\n\n";
+    if (instrucciones && instrucciones.trim() !== '') {
+        contenido += "INSTRUCCIONES:\n" + instrucciones + "\n";
+    }
+    
+    const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nombreArchivo + '.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 // Confirmar eliminación
 function confirmarEliminar(url, nombre) {
     if (confirm('¿Está seguro de que desea eliminar "' + nombre + '"? Esta acción no se puede deshacer.')) {

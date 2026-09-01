@@ -9,12 +9,21 @@ requireRole('estudiante');
 $db = getDB();
 $userId = $_SESSION['user_id'];
 
-// Materias inscritas
-$materias = $db->query("
-    SELECT m.* FROM materias m 
-    JOIN materia_estudiante me ON m.id = me.materia_id 
-    WHERE me.estudiante_id = $userId
-")->fetchAll();
+$gradoEstudiante = intval($_SESSION['user_grado'] ?? 0);
+$paraleloEstudiante = trim($_SESSION['user_paralelo'] ?? '');
+
+// Materias inscritas (dinámicamente por grado y paralelo)
+$materias = [];
+if ($gradoEstudiante > 0 && $paraleloEstudiante !== '') {
+    $stmt = $db->prepare("
+        SELECT m.* 
+        FROM materias m 
+        JOIN materia_curso mc ON m.id = mc.materia_id 
+        WHERE mc.grado = ? AND mc.paralelo = ?
+    ");
+    $stmt->execute([$gradoEstudiante, $paraleloEstudiante]);
+    $materias = $stmt->fetchAll();
+}
 
 $materiasIds = array_column($materias, 'id');
 $inClause = $materiasIds ? implode(',', $materiasIds) : '0';
@@ -25,6 +34,7 @@ $actividadesPendientes = $db->query("
     FROM actividades a
     JOIN materias m ON a.materia_id = m.id
     WHERE a.materia_id IN ($inClause) AND a.estado = 'publicada'
+      AND a.grado = $gradoEstudiante AND a.paralelo = '$paraleloEstudiante'
       AND a.id NOT IN (SELECT actividad_id FROM entregas WHERE estudiante_id = $userId)
     ORDER BY a.fecha_limite ASC LIMIT 5
 ")->fetchAll();

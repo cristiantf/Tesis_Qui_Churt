@@ -21,15 +21,18 @@ try {
     // Si no se puede modificar la tabla, seguimos con la lógica normal y dejamos que el error se muestre.
 }
 
-// Asegurar tabla para asignaciones de docente (grado + paralelo)
+// Asegurar tabla para asignaciones (si no existiera, aunque fue en el script)
 try {
-    $db->exec("CREATE TABLE IF NOT EXISTS docente_curso_paralelo (
+    $db->exec("CREATE TABLE IF NOT EXISTS materia_curso (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        materia_id INT NOT NULL,
         docente_id INT NOT NULL,
         grado TINYINT UNSIGNED NOT NULL,
         paralelo ENUM('A','B','C','D') NOT NULL,
-        fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (docente_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE,
+        FOREIGN KEY (docente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_materia_curso (materia_id, grado, paralelo)
     ) ENGINE=InnoDB;");
 } catch (PDOException $e) {
     // ignore
@@ -99,26 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("UPDATE usuarios SET nombre=?, apellido=?, email=?, rol=?, grado=?, paralelo=? WHERE id=?");
                 $stmt->execute([$nombre, $apellido, $email, $rol, $grado, $paralelo, $id]);
             }
-            // Guardar asignaciones de docente (si aplica)
-            $db->prepare("DELETE FROM docente_curso_paralelo WHERE docente_id = ?")->execute([$id]);
-            $db->prepare("DELETE FROM materia_docente WHERE docente_id = ?")->execute([$id]);
-            if ($rol === 'docente') {
-                foreach ($docenteCombos as $combo) {
-                    $parts = explode('|', $combo);
-                    if (count($parts) === 2) {
-                        $g = intval($parts[0]);
-                        $p = strtoupper(trim($parts[1]));
-                        if (in_array($g, GRADOS, true) && in_array($p, PARALELOS, true)) {
-                            $stmt = $db->prepare("INSERT INTO docente_curso_paralelo (docente_id, grado, paralelo) VALUES (?, ?, ?)");
-                            $stmt->execute([$id, $g, $p]);
-                        }
-                    }
-                }
-                foreach ($materiasDocenteSeleccionadas as $materiaId) {
-                    $stmt = $db->prepare("INSERT IGNORE INTO materia_docente (materia_id, docente_id) VALUES (?, ?)");
-                    $stmt->execute([$materiaId, $id]);
-                }
-            }
+            // Eliminar asignaciones masivas de docente; ahora se gestionan en Asignar Clases.
             setFlashMessage('success', 'Usuario actualizado correctamente.');
         } else {
             // Crear
@@ -136,21 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 if ($rol === 'docente') {
-                    foreach ($docenteCombos as $combo) {
-                        $parts = explode('|', $combo);
-                        if (count($parts) === 2) {
-                            $g = intval($parts[0]);
-                            $p = strtoupper(trim($parts[1]));
-                            if (in_array($g, GRADOS, true) && in_array($p, PARALELOS, true)) {
-                                $stmt = $db->prepare("INSERT INTO docente_curso_paralelo (docente_id, grado, paralelo) VALUES (?, ?, ?)");
-                                $stmt->execute([$newUserId, $g, $p]);
-                            }
-                        }
-                    }
-                    foreach ($materiasDocenteSeleccionadas as $materiaId) {
-                        $stmt = $db->prepare("INSERT IGNORE INTO materia_docente (materia_id, docente_id) VALUES (?, ?)");
-                        $stmt->execute([$materiaId, $newUserId]);
-                    }
+                    // La asignación de materias se hace ahora desde Asignar Clases.
                 }
                 setFlashMessage('success', 'Usuario creado correctamente.');
             }
@@ -189,14 +159,14 @@ foreach ($materiasAsignadas as $asignacion) {
     $materiasAsignadasByStudent[$asignacion['estudiante_id']][] = intval($asignacion['materia_id']);
 }
 
-$materiasDocenteAsignadas = $db->query("SELECT docente_id, materia_id FROM materia_docente")->fetchAll();
+$materiasDocenteAsignadas = $db->query("SELECT DISTINCT docente_id, materia_id FROM materia_curso")->fetchAll();
 $materiasDocenteByDocente = [];
 foreach ($materiasDocenteAsignadas as $asignacion) {
     $materiasDocenteByDocente[$asignacion['docente_id']][] = intval($asignacion['materia_id']);
 }
 
 // Obtener asignaciones de docente (grado + paralelo)
-$docenteAsignaciones = $db->query("SELECT docente_id, grado, paralelo FROM docente_curso_paralelo")->fetchAll();
+$docenteAsignaciones = $db->query("SELECT DISTINCT docente_id, grado, paralelo FROM materia_curso")->fetchAll();
 // construir combos 'grado|paralelo' por docente para el JS
 $docenteCombosById = [];
 foreach ($docenteAsignaciones as $d) {
@@ -395,33 +365,9 @@ include __DIR__ . '/../includes/header.php';
                             <small class="text-muted">Selecciona una o ambas materias para este estudiante.</small>
                         </div>
                         <div class="col-12 docente-fields" style="display:none;">
-                            <label class="form-label fw-semibold small">Cursos y Paralelos (donde dará clases)</label>
-                            <div id="docenteCombos" class="d-flex flex-wrap gap-2">
-                                <?php foreach (GRADOS as $g): ?>
-                                    <?php foreach (PARALELOS as $p): ?>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="docente_combos[]" id="docente-<?php echo $g; ?>-<?php echo $p; ?>" value="<?php echo $g . '|' . $p; ?>">
-                                        <label class="form-check-label" for="docente-<?php echo $g; ?>-<?php echo $p; ?>"><?php echo $g; ?>° - Paralelo <?php echo $p; ?></label>
-                                    </div>
-                                    <?php endforeach; ?>
-                                <?php endforeach; ?>
+                            <div class="alert alert-info py-2 mb-0 mt-2">
+                                <i class="bi bi-info-circle me-1"></i> La asignación de materias, cursos y paralelos a este docente se realiza en la sección <a href="asignar_materias.php" class="alert-link">Asignación de Clases</a>.
                             </div>
-                            <small class="text-muted">Marca los cursos/paralelos donde el docente podrá impartir clases.</small>
-                        </div>
-                        <div class="col-12 docente-fields" style="display:none;">
-                            <label class="form-label fw-semibold small">Materias que dará</label>
-                            <button type="button" class="btn btn-sm btn-outline-primary mb-2" onclick="toggleDocenteMateriasPanel()">
-                                <i class="bi bi-list-check me-1"></i>Seleccionar Materias
-                            </button>
-                            <div id="userMateriasDocente" class="d-flex flex-column gap-2">
-                                <?php foreach ($materias as $m): ?>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="materias_docente[]" id="materia-docente-<?php echo $m['id']; ?>" value="<?php echo $m['id']; ?>">
-                                    <label class="form-check-label" for="materia-docente-<?php echo $m['id']; ?>"><?php echo sanitize($m['nombre']); ?></label>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-                            <small class="text-muted">Selecciona las materias que el docente podrá impartir.</small>
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold small">Contraseña</label>
@@ -454,21 +400,7 @@ function limpiarFormulario() {
     if (materiasContainer) {
         Array.from(materiasContainer.querySelectorAll('input[type="checkbox"]')).forEach(function(opt) { opt.checked = false; });
     }
-    var materiasDocenteContainer = document.getElementById('userMateriasDocente');
-    if (materiasDocenteContainer) {
-        Array.from(materiasDocenteContainer.querySelectorAll('input[type="checkbox"]')).forEach(function(opt) { opt.checked = false; });
-    }
-    var docenteContainer = document.getElementById('docenteCombos');
-    if (docenteContainer) {
-        Array.from(docenteContainer.querySelectorAll('input[type="checkbox"]')).forEach(function(opt) { opt.checked = false; });
-    }
     toggleEstudianteFields();
-}
-
-function toggleDocenteMateriasPanel() {
-    var panel = document.getElementById('userMateriasDocente');
-    if (!panel) return;
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
 function toggleMateriasPanel() {
@@ -510,21 +442,6 @@ function editarUsuario(user) {
     if (materiasContainer) {
         Array.from(materiasContainer.querySelectorAll('input[type="checkbox"]')).forEach(function(opt) {
             opt.checked = selectedMaterias.includes(parseInt(opt.value, 10));
-        });
-    }
-    // preseleccionar combos docente
-    var selectedDocente = window.docenteAsignacionesById && window.docenteAsignacionesById[user.id] ? window.docenteAsignacionesById[user.id] : [];
-    var docenteContainer = document.getElementById('docenteCombos');
-    if (docenteContainer) {
-        Array.from(docenteContainer.querySelectorAll('input[type="checkbox"]')).forEach(function(opt) {
-            opt.checked = selectedDocente.includes(opt.value);
-        });
-    }
-    var selectedMateriasDocente = window.materiasDocenteByDocente[user.id] || [];
-    var materiasDocenteContainer = document.getElementById('userMateriasDocente');
-    if (materiasDocenteContainer) {
-        Array.from(materiasDocenteContainer.querySelectorAll('input[type="checkbox"]')).forEach(function(opt) {
-            opt.checked = selectedMateriasDocente.includes(parseInt(opt.value, 10));
         });
     }
     new bootstrap.Modal(document.getElementById('modalUsuario')).show();

@@ -17,8 +17,8 @@ $actividadesPorMetodologia = $db->query("SELECT tipo_metodologia, COUNT(*) as to
 
 $materiaStats = $db->query("
     SELECT m.nombre, 
-           (SELECT COUNT(*) FROM materia_docente md WHERE md.materia_id = m.id) as docentes,
-           (SELECT COUNT(*) FROM materia_estudiante me WHERE me.materia_id = m.id) as estudiantes,
+           (SELECT COUNT(DISTINCT docente_id) FROM materia_curso mc WHERE mc.materia_id = m.id) as docentes,
+           (SELECT COUNT(DISTINCT u.id) FROM usuarios u JOIN materia_curso mc ON u.grado = mc.grado AND u.paralelo COLLATE utf8mb4_unicode_ci = mc.paralelo COLLATE utf8mb4_unicode_ci WHERE mc.materia_id = m.id AND u.rol = 'estudiante' AND u.estado = 1) as estudiantes,
            (SELECT COUNT(*) FROM actividades a WHERE a.materia_id = m.id) as actividades,
            (SELECT COUNT(*) FROM recursos r WHERE r.materia_id = m.id) as recursos
     FROM materias m

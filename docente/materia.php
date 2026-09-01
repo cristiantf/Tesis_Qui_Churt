@@ -17,7 +17,7 @@ if (!$materia) {
     exit;
 }
 
-$asignada = $db->prepare("SELECT id FROM materia_docente WHERE materia_id = ? AND docente_id = ?");
+$asignada = $db->prepare("SELECT id FROM materia_curso WHERE materia_id = ? AND docente_id = ? LIMIT 1");
 $asignada->execute([$materiaId, $userId]);
 $asignada = $asignada->fetch();
 
@@ -27,8 +27,13 @@ $totalActividades = $db->prepare("SELECT COUNT(*) FROM actividades WHERE materia
 $totalActividades->execute([$materiaId, $userId]);
 $totalActividades = $totalActividades->fetchColumn();
 
-$totalEstudiantes = $db->prepare("SELECT COUNT(*) FROM materia_estudiante WHERE materia_id = ?");
-$totalEstudiantes->execute([$materiaId]);
+$totalEstudiantes = $db->prepare("
+    SELECT COUNT(DISTINCT u.id) 
+    FROM usuarios u
+    JOIN materia_curso mc ON u.grado = mc.grado AND u.paralelo COLLATE utf8mb4_unicode_ci = mc.paralelo COLLATE utf8mb4_unicode_ci
+    WHERE mc.materia_id = ? AND mc.docente_id = ? AND u.rol = 'estudiante' AND u.estado = 1
+");
+$totalEstudiantes->execute([$materiaId, $userId]);
 $totalEstudiantes = $totalEstudiantes->fetchColumn();
 
 $entregasPendientes = $db->prepare("

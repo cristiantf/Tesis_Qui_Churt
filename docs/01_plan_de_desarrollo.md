@@ -25,8 +25,8 @@ Trabajaremos con **Sprints de 2 semanas**, lo que nos permite un ritmo constante
 
 ### 4. Roadmap Inicial (Ejemplo de Fases)
 
-*   **Fase 1 (MVP - Producto Mínimo Viable):** Autenticación de usuarios, roles básicos (Admin, Docente, Estudiante), y gestión básica de materias y recursos. *(Completada en la versión actual)*.
-*   **Fase 2:** Integración de foros de discusión (Aprendizaje Colaborativo) y módulos de debate.
+*   **Fase 1 (MVP - Producto Mínimo Viable):** Autenticación de usuarios, roles básicos (Admin, Docente, Estudiante), y gestión básica de materias y recursos. *(Completada)*.
+*   **Fase 2 (Integración IA y Colaboración):** Generación de actividades apoyada por Inteligencia Artificial (Gemini 3.6 Flash), integración de foros de discusión con operaciones CRUD (Aprendizaje Colaborativo), gestión avanzada y edición de recursos, y exportación a PDF/TXT. *(Completada)*.
 *   **Fase 3:** Gamificación y sistema de evaluación continua, rubricas integradas.
 *   **Fase 4:** Reportes avanzados de rendimiento, análisis predictivo de estudiantes en riesgo.
 

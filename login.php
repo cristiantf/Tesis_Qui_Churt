@@ -59,6 +59,7 @@ if (isset($_GET['registro']) && $_GET['registro'] === 'exitoso') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/styles.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/assets/img/Logo.png">
 </head>
 <body class="auth-page">
     <div class="container">
@@ -69,7 +70,7 @@ if (isset($_GET['registro']) && $_GET['registro'] === 'exitoso') {
                         <!-- Logo -->
                         <div class="text-center mb-4">
                             <img src="<?php echo getLogoUrl(); ?>" alt="Logo institucional" height="70" class="mb-3 institution-logo">
-                            <h4 class="fw-bold text-dark">Bienvenido</h4>
+                            <h4 class="fw-bold text-dark">U.E. 10 de Agosto</h4>
                             <p class="text-muted small">Inicia sesión en tu cuenta</p>
                         </div>
 

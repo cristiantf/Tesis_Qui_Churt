@@ -11,7 +11,7 @@ define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
 // Ruta base del proyecto
-define('BASE_URL', '/10%20de%20agosto');
+define('BASE_URL', '/10_DE_AGOSTO');
 define('BASE_PATH', __DIR__ . '/..');
 
 require_once __DIR__ . '/app.php';

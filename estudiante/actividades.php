@@ -9,8 +9,20 @@ requireRole('estudiante');
 $db = getDB();
 $userId = $_SESSION['user_id'];
 
-// Obtener materias inscritas
-$materias = $db->query("SELECT m.* FROM materias m JOIN materia_estudiante me ON m.id = me.materia_id WHERE me.estudiante_id = $userId")->fetchAll();
+$gradoEstudiante = intval($_SESSION['user_grado'] ?? 0);
+$paraleloEstudiante = trim($_SESSION['user_paralelo'] ?? '');
+
+$materias = [];
+if ($gradoEstudiante > 0 && $paraleloEstudiante !== '') {
+    $stmt = $db->prepare("
+        SELECT m.* 
+        FROM materias m 
+        JOIN materia_curso mc ON m.id = mc.materia_id 
+        WHERE mc.grado = ? AND mc.paralelo = ?
+    ");
+    $stmt->execute([$gradoEstudiante, $paraleloEstudiante]);
+    $materias = $stmt->fetchAll();
+}
 $materiasIds = array_column($materias, 'id');
 $inClause = $materiasIds ? implode(',', $materiasIds) : '0';
 
@@ -20,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actividad_id'])) {
     $contenido = trim($_POST['contenido'] ?? '');
     
     // Verificar que la actividad exista y esté publicada
-    $actCheck = $db->prepare("SELECT id FROM actividades WHERE id = ? AND materia_id IN ($inClause) AND estado = 'publicada'");
-    $actCheck->execute([$actividad_id]);
+    $actCheck = $db->prepare("SELECT id FROM actividades WHERE id = ? AND materia_id IN ($inClause) AND grado = ? AND paralelo = ? AND estado = 'publicada'");
+    $actCheck->execute([$actividad_id, $gradoEstudiante, $paraleloEstudiante]);
     
     if ($actCheck->fetch()) {
         // Verificar si ya entregó
@@ -51,9 +63,9 @@ if ($verActId) {
         SELECT a.*, m.nombre as materia_nombre
         FROM actividades a
         JOIN materias m ON a.materia_id = m.id
-        WHERE a.id = ? AND a.materia_id IN ($inClause) AND a.estado = 'publicada'
+        WHERE a.id = ? AND a.materia_id IN ($inClause) AND a.grado = ? AND a.paralelo = ? AND a.estado = 'publicada'
     ");
-    $stmt->execute([$verActId]);
+    $stmt->execute([$verActId, $gradoEstudiante, $paraleloEstudiante]);
     $actividad = $stmt->fetch();
     
     if ($actividad) {
@@ -79,9 +91,9 @@ $sql = "
     JOIN materias m ON a.materia_id = m.id
     LEFT JOIN entregas e ON a.id = e.actividad_id AND e.estudiante_id = ?
     LEFT JOIN calificaciones c ON e.id = c.entrega_id
-    WHERE a.materia_id IN ($inClause) AND a.estado = 'publicada'
+    WHERE a.materia_id IN ($inClause) AND a.grado = ? AND a.paralelo = ? AND a.estado = 'publicada'
 ";
-$params = [$userId];
+$params = [$userId, $gradoEstudiante, $paraleloEstudiante];
 
 if ($filtroMateria) {
     $sql .= " AND a.materia_id = ?";

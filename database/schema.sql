@@ -52,6 +52,34 @@ CREATE TABLE IF NOT EXISTS materia_docente (
 ) ENGINE=InnoDB;
 
 -- =====================================================
+-- TABLA: docente_curso_paralelo
+-- =====================================================
+CREATE TABLE IF NOT EXISTS docente_curso_paralelo (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    docente_id INT NOT NULL,
+    grado TINYINT UNSIGNED NOT NULL,
+    paralelo ENUM('A', 'B', 'C', 'D') NOT NULL,
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (docente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_docente_curso_paralelo (docente_id, grado, paralelo)
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- TABLA: materia_curso (asignación materia-docente-curso)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS materia_curso (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    materia_id INT NOT NULL,
+    docente_id INT NOT NULL,
+    grado TINYINT UNSIGNED NOT NULL,
+    paralelo ENUM('A', 'B', 'C', 'D') NOT NULL,
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (materia_id) REFERENCES materias(id) ON DELETE CASCADE,
+    FOREIGN KEY (docente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_materia_curso (materia_id, grado, paralelo)
+) ENGINE=InnoDB;
+
+-- =====================================================
 -- TABLA: materia_estudiante (inscripción estudiante-materia)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS materia_estudiante (
@@ -133,7 +161,6 @@ CREATE TABLE IF NOT EXISTS recursos (
 ) ENGINE=InnoDB;
 
 -- =====================================================
--- TABLA: foro_temas
 -- =====================================================
 CREATE TABLE IF NOT EXISTS foro_temas (
     id INT AUTO_INCREMENT PRIMARY KEY,

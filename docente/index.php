@@ -11,16 +11,17 @@ $userId = $_SESSION['user_id'];
 
 // Materias asignadas
 $materias = $db->query("
-    SELECT m.* FROM materias m 
-    JOIN materia_docente md ON m.id = md.materia_id 
-    WHERE md.docente_id = $userId
+    SELECT DISTINCT m.* 
+    FROM materias m 
+    JOIN materia_curso mc ON m.id = mc.materia_id 
+    WHERE mc.docente_id = $userId
 ")->fetchAll();
 
 $materiasIds = array_column($materias, 'id');
 $inClause = $materiasIds ? implode(',', $materiasIds) : '0';
 
 // Cursos y paralelos asignados
-$cursoParalelosData = $db->prepare("SELECT grado, paralelo FROM docente_curso_paralelo WHERE docente_id = ? ORDER BY grado, paralelo");
+$cursoParalelosData = $db->prepare("SELECT DISTINCT grado, paralelo FROM materia_curso WHERE docente_id = ? ORDER BY grado, paralelo");
 $cursoParalelosData->execute([$userId]);
 $cursoParalelos = $cursoParalelosData->fetchAll(PDO::FETCH_ASSOC);
 
@@ -29,7 +30,7 @@ $totalActividades = $db->query("SELECT COUNT(*) FROM actividades WHERE docente_i
 $actividadesActivas = $db->query("SELECT COUNT(*) FROM actividades WHERE docente_id = $userId AND estado = 'publicada'")->fetchColumn();
 $totalEntregas = $db->query("SELECT COUNT(*) FROM entregas e JOIN actividades a ON e.actividad_id = a.id WHERE a.docente_id = $userId")->fetchColumn();
 $entregasPendientes = $db->query("SELECT COUNT(*) FROM entregas e JOIN actividades a ON e.actividad_id = a.id WHERE a.docente_id = $userId AND e.estado = 'entregada'")->fetchColumn();
-$totalEstudiantes = $db->query("SELECT COUNT(DISTINCT me.estudiante_id) FROM materia_estudiante me WHERE me.materia_id IN ($inClause)")->fetchColumn();
+$totalEstudiantes = $db->query("SELECT COUNT(DISTINCT u.id) FROM usuarios u JOIN materia_curso mc ON u.grado = mc.grado AND u.paralelo COLLATE utf8mb4_unicode_ci = mc.paralelo COLLATE utf8mb4_unicode_ci WHERE mc.docente_id = $userId AND u.rol = 'estudiante' AND u.estado = 1")->fetchColumn();
 $totalRecursos = $db->query("SELECT COUNT(*) FROM recursos WHERE docente_id = $userId")->fetchColumn();
 
 // Últimas entregas pendientes

@@ -24,8 +24,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
         $stmt = $db->prepare("INSERT INTO foro_respuestas (tema_id, usuario_id, contenido) VALUES (?,?,?)");
         $stmt->execute([intval($_POST['tema_id']), $userId, trim($_POST['contenido'])]);
         setFlashMessage('success', 'Respuesta publicada.');
+    } elseif ($_POST['accion'] === 'editar_tema') {
+        $stmt = $db->prepare("UPDATE foro_temas SET titulo = ?, contenido = ? WHERE id = ? AND usuario_id = ?");
+        $stmt->execute([trim($_POST['titulo']), trim($_POST['contenido']), intval($_POST['tema_id']), $userId]);
+        setFlashMessage('success', 'Tema actualizado correctamente.');
     }
     header('Location: ' . BASE_URL . '/docente/foro.php' . (isset($_POST['tema_id']) ? '?tema=' . $_POST['tema_id'] : ''));
+    exit;
+}
+
+// Eliminar tema
+if (isset($_GET['eliminar_tema'])) {
+    $id = intval($_GET['eliminar_tema']);
+    $stmt = $db->prepare("DELETE FROM foro_temas WHERE id = ? AND usuario_id = ?");
+    $stmt->execute([$id, $userId]);
+    setFlashMessage('success', 'Tema eliminado.');
+    header('Location: ' . BASE_URL . '/docente/foro.php');
     exit;
 }
 
@@ -89,6 +103,12 @@ include __DIR__ . '/../includes/header.php';
                         <i class="bi bi-clock me-1"></i><?php echo date('d/m/Y H:i', strtotime($tema['fecha_creacion'])); ?>
                     </p>
                 </div>
+                <?php if ($tema['usuario_id'] == $userId): ?>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick='editarTema(<?php echo json_encode($tema); ?>)'><i class="bi bi-pencil"></i></button>
+                    <a class="btn btn-sm btn-outline-danger" href="?eliminar_tema=<?php echo $tema['id']; ?>" onclick="return confirm('¿Eliminar este tema y todas sus respuestas?')"><i class="bi bi-trash"></i></a>
+                </div>
+                <?php endif; ?>
             </div>
             <hr>
             <p><?php echo nl2br(sanitize($tema['contenido'])); ?></p>
@@ -152,7 +172,14 @@ include __DIR__ . '/../includes/header.php';
                         <span><i class="bi bi-clock"></i> <?php echo date('d/m/Y', strtotime($t['fecha_creacion'])); ?></span>
                     </div>
                 </div>
-                <span class="badge bg-secondary rounded-pill"><?php echo $t['total_respuestas']; ?> <i class="bi bi-chat"></i></span>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge bg-secondary rounded-pill"><?php echo $t['total_respuestas']; ?> <i class="bi bi-chat"></i></span>
+                    <?php if ($t['usuario_id'] == $userId): ?>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-danger" href="?eliminar_tema=<?php echo $t['id']; ?>" onclick="return confirm('¿Eliminar este tema?'); event.stopPropagation();" title="Eliminar"><i class="bi bi-trash"></i></a>
+                    </div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </a>
@@ -162,14 +189,15 @@ include __DIR__ . '/../includes/header.php';
     <div class="modal fade" id="modalTema" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form method="POST">
-                    <input type="hidden" name="accion" value="crear_tema">
+                <form method="POST" id="formTema">
+                    <input type="hidden" name="accion" id="temaAccion" value="crear_tema">
+                    <input type="hidden" name="tema_id" id="temaId" value="0">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-plus-lg me-2"></i>Nuevo Tema de Discusión</h5>
+                        <h5 class="modal-title" id="modalTemaTitle"><i class="bi bi-plus-lg me-2"></i>Nuevo Tema de Discusión</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="mb-3">
+                        <div class="mb-3" id="divMateriaTema">
                             <label class="form-label fw-semibold small">Materia</label>
                             <select name="materia_id" class="form-select" required>
                                 <?php foreach ($materias as $m): ?>
@@ -179,11 +207,11 @@ include __DIR__ . '/../includes/header.php';
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold small">Título</label>
-                            <input type="text" name="titulo" class="form-control" required>
+                            <input type="text" name="titulo" id="temaTitulo" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold small">Contenido</label>
-                            <textarea name="contenido" class="form-control" rows="4" required></textarea>
+                            <textarea name="contenido" id="temaContenido" class="form-control" rows="4" required></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -196,5 +224,26 @@ include __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.querySelector('[data-bs-target="#modalTema"]')?.addEventListener('click', function() {
+    document.getElementById('temaAccion').value = 'crear_tema';
+    document.getElementById('temaId').value = '0';
+    document.getElementById('temaTitulo').value = '';
+    document.getElementById('temaContenido').value = '';
+    document.getElementById('divMateriaTema').style.display = 'block';
+    document.getElementById('modalTemaTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Nuevo Tema de Discusión';
+});
+
+function editarTema(t) {
+    document.getElementById('temaAccion').value = 'editar_tema';
+    document.getElementById('temaId').value = t.id;
+    document.getElementById('temaTitulo').value = t.titulo;
+    document.getElementById('temaContenido').value = t.contenido;
+    document.getElementById('divMateriaTema').style.display = 'none'; // No se edita la materia del tema
+    document.getElementById('modalTemaTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Tema';
+    new bootstrap.Modal(document.getElementById('modalTema')).show();
+}
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

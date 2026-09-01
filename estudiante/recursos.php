@@ -9,8 +9,20 @@ requireRole('estudiante');
 $db = getDB();
 $userId = $_SESSION['user_id'];
 
-// Obtener materias inscritas
-$materias = $db->query("SELECT m.* FROM materias m JOIN materia_estudiante me ON m.id = me.materia_id WHERE me.estudiante_id = $userId")->fetchAll();
+$gradoEstudiante = intval($_SESSION['user_grado'] ?? 0);
+$paraleloEstudiante = trim($_SESSION['user_paralelo'] ?? '');
+
+$materias = [];
+if ($gradoEstudiante > 0 && $paraleloEstudiante !== '') {
+    $stmt = $db->prepare("
+        SELECT m.* 
+        FROM materias m 
+        JOIN materia_curso mc ON m.id = mc.materia_id 
+        WHERE mc.grado = ? AND mc.paralelo = ?
+    ");
+    $stmt->execute([$gradoEstudiante, $paraleloEstudiante]);
+    $materias = $stmt->fetchAll();
+}
 $materiasIds = array_column($materias, 'id');
 $inClause = $materiasIds ? implode(',', $materiasIds) : '0';
 
@@ -22,9 +34,9 @@ $sql = "
     FROM recursos r
     JOIN materias m ON r.materia_id = m.id
     JOIN usuarios u ON r.docente_id = u.id
-    WHERE r.materia_id IN ($inClause) AND r.estado = 1
+    WHERE r.materia_id IN ($inClause) AND r.grado = ? AND r.paralelo = ? AND r.estado = 1
 ";
-$params = [];
+$params = [$gradoEstudiante, $paraleloEstudiante];
 
 if ($filtroMateria) {
     $sql .= " AND r.materia_id = ?";

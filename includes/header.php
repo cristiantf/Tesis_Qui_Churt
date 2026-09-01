@@ -23,6 +23,8 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- Custom CSS -->
     <link href="<?php echo BASE_URL; ?>/assets/css/styles.css" rel="stylesheet">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/assets/img/Logo.png">
 </head>
 <body>
 

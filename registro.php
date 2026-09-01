@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="card-body">
                         <div class="text-center mb-4">
                             <img src="<?php echo getLogoUrl(); ?>" alt="Logo institucional" height="65" class="mb-3 institution-logo">
-                            <h4 class="fw-bold text-dark">Crear Cuenta</h4>
+                            <h4 class="fw-bold text-dark">U.E. 10 de Agosto</h4>
                             <p class="text-muted small">Únete a la plataforma educativa</p>
                         </div>
 

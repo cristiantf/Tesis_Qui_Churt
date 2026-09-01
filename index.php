@@ -19,6 +19,7 @@ if (isLoggedIn()) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="<?php echo assetUrl('css/styles.css'); ?>" rel="stylesheet">
+    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/assets/img/Logo.png">
     <style>
         /* =====================================================
            LANDING PAGE - ESTILOS ESPECÍFICOS
@@ -494,7 +495,17 @@ if (isLoggedIn()) {
         <p class="inst-subtitle">Plataforma de Metodologías Activas</p>
         <div class="inst-badge">
             <i class="bi bi-mortarboard-fill"></i>
-            5° a 10° Grado &middot; Paralelos A, B, C y D &middot; San Lorenzo
+            Básica Media &middot; Ciencias Naturales y Estudios Sociales
+        </div>
+    </div>
+
+    <!-- Información de la Tesis -->
+    <div class="container mb-4" style="position: relative; z-index: 2; max-width: 920px;">
+        <div style="background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; color: #fff; padding: 1.5rem;">
+            <h5 class="mb-2 text-warning fw-bold text-center">Mejorando el Proceso de Enseñanza-Aprendizaje</h5>
+            <p class="mb-0 text-center" style="color: rgba(255,255,255,0.85); font-size: 0.9rem;">
+                Plataforma web educativa basada en metodologías activas enfocada en optimizar el aprendizaje de los estudiantes de la Unidad Educativa Fiscomisional 10 de agosto. Promovemos la participación, el pensamiento crítico y el aprendizaje colaborativo.
+            </p>
         </div>
     </div>
 

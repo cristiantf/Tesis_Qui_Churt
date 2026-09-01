@@ -11,6 +11,8 @@ define('APP_VERSION', '1.1.0');
 define('GRADOS', [5, 6, 7, 8, 9, 10]);
 define('PARALELOS', ['A', 'B', 'C', 'D']);
 
+define('GEMINI_API_KEY', 'INSERTAR_API_KEY_AQUI');
+
 /**
  * Mapeo rol de base de datos → carpeta del módulo
  */

@@ -9,8 +9,19 @@ requireRole('estudiante');
 $db = getDB();
 $userId = $_SESSION['user_id'];
 $filtroMateria = $_GET['materia_id'] ?? '';
-
-$materias = $db->query("SELECT m.* FROM materias m JOIN materia_estudiante me ON m.id = me.materia_id WHERE me.estudiante_id = $userId")->fetchAll();
+$gradoEstudiante = intval($_SESSION['user_grado'] ?? 0);
+$paraleloEstudiante = trim($_SESSION['user_paralelo'] ?? '');
+$materias = [];
+if ($gradoEstudiante > 0 && $paraleloEstudiante !== '') {
+    $stmt = $db->prepare("
+        SELECT m.* 
+        FROM materias m 
+        JOIN materia_curso mc ON m.id = mc.materia_id 
+        WHERE mc.grado = ? AND mc.paralelo = ?
+    ");
+    $stmt->execute([$gradoEstudiante, $paraleloEstudiante]);
+    $materias = $stmt->fetchAll();
+}
 
 $sql = "
     SELECT c.*, a.titulo as actividad_titulo, a.puntaje_maximo, m.nombre as materia_nombre, m.id as materia_id,

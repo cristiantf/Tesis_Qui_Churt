@@ -54,18 +54,18 @@ if ($materiaId) {
 }
 
 // Obtener entregas (incluye grado/paralelo del estudiante)
-$entregas = $db->query("\
-    SELECT e.*, u.nombre, u.apellido, u.email, u.grado AS estudiante_grado, u.paralelo AS estudiante_paralelo,\
-           a.titulo as actividad_titulo, a.puntaje_maximo,\
-           m.nombre as materia_nombre,\
-           c.nota, c.retroalimentacion, c.id as calificacion_id\
-    FROM entregas e\
-    JOIN actividades a ON e.actividad_id = a.id\
-    JOIN usuarios u ON e.estudiante_id = u.id\
-    JOIN materias m ON a.materia_id = m.id\
-    LEFT JOIN calificaciones c ON e.id = c.entrega_id\
-    WHERE a.docente_id = $userId $whereMateria\
-    ORDER BY e.estado ASC, e.fecha_entrega DESC\
+$entregas = $db->query("
+    SELECT e.*, u.nombre, u.apellido, u.email, u.grado AS estudiante_grado, u.paralelo AS estudiante_paralelo,
+           a.titulo as actividad_titulo, a.puntaje_maximo,
+           m.nombre as materia_nombre,
+           c.nota, c.retroalimentacion, c.id as calificacion_id
+    FROM entregas e
+    JOIN actividades a ON e.actividad_id = a.id
+    JOIN usuarios u ON e.estudiante_id = u.id
+    JOIN materias m ON a.materia_id = m.id
+    LEFT JOIN calificaciones c ON e.id = c.entrega_id
+    WHERE a.docente_id = $userId $whereMateria
+    ORDER BY e.estado ASC, e.fecha_entrega DESC
 ")->fetchAll();
 
 include __DIR__ . '/../includes/header.php';
