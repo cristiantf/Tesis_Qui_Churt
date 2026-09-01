@@ -105,7 +105,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <?php if ($tema['usuario_id'] == $userId): ?>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-primary" onclick='editarTema(<?php echo json_encode($tema); ?>)'><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-primary" onclick='editarTema(<?php echo htmlspecialchars(json_encode($tema), ENT_QUOTES, "UTF-8"); ?>)'><i class="bi bi-pencil"></i></button>
                     <a class="btn btn-sm btn-outline-danger" href="?eliminar_tema=<?php echo $tema['id']; ?>" onclick="return confirm('¿Eliminar este tema y todas sus respuestas?')"><i class="bi bi-trash"></i></a>
                 </div>
                 <?php endif; ?>

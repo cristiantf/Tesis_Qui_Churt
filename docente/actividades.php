@@ -165,7 +165,7 @@ include __DIR__ . '/../includes/header.php';
                                 <li><a class="dropdown-item" href="#" onclick='exportarATXT(<?php echo htmlspecialchars(json_encode($a['titulo'])); ?>, <?php echo htmlspecialchars(json_encode($a['descripcion'])); ?>, <?php echo htmlspecialchars(json_encode($a['instrucciones'])); ?>, "Actividad_<?php echo $a['id']; ?>")'><i class="bi bi-file-text text-primary me-2"></i>Exportar TXT</a></li>
                             </ul>
                         </div>
-                        <button class="btn btn-sm btn-outline-primary" onclick='editarActividad(<?php echo json_encode($a); ?>)' title="Editar"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-primary" onclick='editarActividad(<?php echo htmlspecialchars(json_encode($a), ENT_QUOTES, "UTF-8"); ?>)' title="Editar"><i class="bi bi-pencil"></i></button>
                         <a class="btn btn-sm btn-outline-danger" href="?eliminar=<?php echo $a['id']; ?>" onclick="return confirm('¿Eliminar actividad?')" title="Eliminar"><i class="bi bi-trash"></i></a>
                     </div>
                 </div>

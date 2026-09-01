@@ -129,7 +129,7 @@ include __DIR__ . '/../includes/header.php';
                                 <li><a class="dropdown-item" href="#" onclick='exportarATXT(<?php echo htmlspecialchars(json_encode($r['titulo'])); ?>, <?php echo htmlspecialchars(json_encode($r['descripcion'])); ?>, <?php echo htmlspecialchars(json_encode($r['tipo'] === "enlace" ? "Enlace: " . $r['archivo'] : "")); ?>, "Recurso_<?php echo $r['id']; ?>")'><i class="bi bi-file-text text-primary me-2"></i>Exportar TXT</a></li>
                             </ul>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm" onclick='editarRecurso(<?php echo json_encode($r); ?>)' title="Editar">
+                        <button class="btn btn-outline-primary btn-sm" onclick='editarRecurso(<?php echo htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8"); ?>)' title="Editar">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button class="btn btn-outline-danger btn-sm" onclick="confirmarEliminar('?eliminar=<?php echo $r['id']; ?>','<?php echo sanitize($r['titulo']); ?>')" title="Eliminar">
