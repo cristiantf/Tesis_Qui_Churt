@@ -15,6 +15,7 @@ if (!in_array($activeTab, ['docentes', 'estudiantes'], true)) {
 
 // Procesar desasignaciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
     $accion = $_POST['accion'] ?? '';
     
     if ($accion === 'desasignar_docente') {
@@ -114,6 +115,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="card-body">
                     <form method="POST" class="row g-3 align-items-end">
+                        <?php echo csrfInput(); ?>
                         <input type="hidden" name="accion" value="asignar_docente">
                         
                         <div class="col-md-3">
@@ -188,6 +190,7 @@ include __DIR__ . '/../includes/header.php';
                                     <td><span class="badge bg-secondary"><?php echo $a['grado']; ?>° <?php echo $a['paralelo']; ?></span></td>
                                     <td class="text-center">
                                         <form method="POST" style="display:inline;">
+                                            <?php echo csrfInput(); ?>
                                             <input type="hidden" name="accion" value="desasignar_docente">
                                             <input type="hidden" name="id" value="<?php echo $a['id']; ?>">
                                             <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Eliminar esta asignación?')">

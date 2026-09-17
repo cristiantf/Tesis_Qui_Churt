@@ -18,14 +18,17 @@ $clases = $db->query("
     ORDER BY m.nombre, mc.grado, mc.paralelo
 ")->fetchAll();
 
-// Procesar eliminación
-if (isset($_GET['eliminar'])) {
-    $id = intval($_GET['eliminar']);
+// Procesar operaciones que modifican datos
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
+    if (($_POST['accion'] ?? '') === 'eliminar') {
+        $id = intval($_POST['id'] ?? 0);
     $stmt = $db->prepare("DELETE FROM actividades WHERE id = ? AND docente_id = ?");
     $stmt->execute([$id, $userId]);
     setFlashMessage('success', 'Actividad eliminada.');
     header('Location: ' . BASE_URL . '/docente/actividades.php');
     exit;
+    }
 }
 
 // Procesar formulario
@@ -39,9 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paralelo = trim($claseSeleccionada[2] ?? '');
     
     $titulo = trim($_POST['titulo']);
-    $descripcion = trim($_POST['descripcion']);
+    $descripcion = sanitizeRichText($_POST['descripcion'] ?? '');
     $tipo_metodologia = $_POST['tipo_metodologia'];
-    $instrucciones = trim($_POST['instrucciones'] ?? '');
+    $instrucciones = sanitizeRichText($_POST['instrucciones'] ?? '');
     $fecha_inicio = $_POST['fecha_inicio'] ?: null;
     $fecha_limite = $_POST['fecha_limite'] ?: null;
     $puntaje_maximo = floatval($_POST['puntaje_maximo'] ?? 100);
@@ -166,7 +169,12 @@ include __DIR__ . '/../includes/header.php';
                             </ul>
                         </div>
                         <button class="btn btn-sm btn-outline-primary" onclick='editarActividad(<?php echo htmlspecialchars(json_encode($a), ENT_QUOTES, "UTF-8"); ?>)' title="Editar"><i class="bi bi-pencil"></i></button>
-                        <a class="btn btn-sm btn-outline-danger" href="?eliminar=<?php echo $a['id']; ?>" onclick="return confirm('¿Eliminar actividad?')" title="Eliminar"><i class="bi bi-trash"></i></a>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar actividad?')">
+                            <?php echo csrfInput(); ?>
+                            <input type="hidden" name="accion" value="eliminar">
+                            <input type="hidden" name="id" value="<?php echo $a['id']; ?>">
+                            <button class="btn btn-sm btn-outline-danger" type="submit" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
                     </div>
                 </div>
                 <p class="text-muted small mb-2"><?php echo sanitize(substr($a['descripcion'], 0, 120)); ?>...</p>
@@ -190,6 +198,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST">
+                <?php echo csrfInput(); ?>
                 <input type="hidden" name="id" id="actId" value="0">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalActTitle"><i class="bi bi-plus-lg me-2"></i>Nueva Actividad</h5>
@@ -235,11 +244,11 @@ include __DIR__ . '/../includes/header.php';
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold small">Descripción *</label>
-                            <textarea name="descripcion" id="actDescripcion" class="form-control" rows="3" required></textarea>
+                            <textarea name="descripcion" id="actDescripcion" class="form-control" rows="3" data-rich-text required></textarea>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold small">Instrucciones</label>
-                            <textarea name="instrucciones" id="actInstrucciones" class="form-control" rows="2"></textarea>
+                            <textarea name="instrucciones" id="actInstrucciones" class="form-control" rows="2" data-rich-text></textarea>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold small">Fecha Inicio</label>
@@ -318,8 +327,8 @@ function editarActividad(a) {
     document.getElementById('actMateria').value = claseVal;
     document.getElementById('actMetodologia').value = a.tipo_metodologia;
     document.getElementById('actTitulo').value = a.titulo;
-    document.getElementById('actDescripcion').value = a.descripcion;
-    document.getElementById('actInstrucciones').value = a.instrucciones || '';
+    RichTextEditor.setValue('#actDescripcion', a.descripcion);
+    RichTextEditor.setValue('#actInstrucciones', a.instrucciones || '');
     document.getElementById('actFechaInicio').value = a.fecha_inicio || '';
     document.getElementById('actFechaLimite').value = a.fecha_limite || '';
     document.getElementById('actPuntaje').value = a.puntaje_maximo;
@@ -350,7 +359,10 @@ async function sugerirConIA() {
     try {
         const response = await fetch('../api/generar_actividad.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('#modalActividad [name="csrf_token"]').value
+            },
             body: JSON.stringify({
                 tema: tema,
                 metodologia: metodologia,
@@ -362,9 +374,9 @@ async function sugerirConIA() {
         
         if (response.ok) {
             document.getElementById('actTitulo').value = data.titulo || '';
-            document.getElementById('actDescripcion').value = data.descripcion || '';
+            RichTextEditor.setValue('#actDescripcion', data.descripcion || '');
             if (data.instrucciones) {
-                document.getElementById('actInstrucciones').value = data.instrucciones;
+                RichTextEditor.setValue('#actInstrucciones', data.instrucciones);
             }
         } else {
             let errorMsg = data.error || "Error desconocido";

@@ -28,6 +28,7 @@ $inClause = $materiasIds ? implode(',', $materiasIds) : '0';
 
 // Procesar entrega
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actividad_id'])) {
+    requireValidCsrfToken();
     $actividad_id = intval($_POST['actividad_id']);
     $contenido = trim($_POST['contenido'] ?? '');
     
@@ -130,13 +131,13 @@ include __DIR__ . '/../includes/header.php';
             
             <h6 class="fw-bold"><i class="bi bi-card-text me-1"></i>Descripción de la Actividad:</h6>
             <div class="p-3 bg-light rounded mb-3">
-                <p class="mb-0 text-muted" style="white-space: pre-wrap;"><?php echo sanitize($actividad['descripcion']); ?></p>
+                <div class="mb-0 text-muted rich-text-content"><?php echo renderRichText($actividad['descripcion']); ?></div>
             </div>
             
             <?php if ($actividad['instrucciones']): ?>
             <h6 class="fw-bold"><i class="bi bi-list-check me-1"></i>Instrucciones de Metodología Activa:</h6>
             <div class="p-3 bg-light rounded mb-3 border-start border-3 border-warning">
-                <p class="mb-0 text-muted" style="white-space: pre-wrap;"><?php echo sanitize($actividad['instrucciones']); ?></p>
+                <div class="mb-0 text-muted rich-text-content"><?php echo renderRichText($actividad['instrucciones']); ?></div>
             </div>
             <?php endif; ?>
 
@@ -185,6 +186,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
             <?php else: ?>
                 <form method="POST">
+                    <?php echo csrfInput(); ?>
                     <input type="hidden" name="actividad_id" value="<?php echo $actividad['id']; ?>">
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Tu Respuesta / Desarrollo de la metodología active:</label>

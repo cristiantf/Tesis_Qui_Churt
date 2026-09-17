@@ -16,6 +16,7 @@ $inClause = $materiasIds ? implode(',', $materiasIds) : '0';
 
 // Crear tema o responder
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
+    requireValidCsrfToken();
     if ($_POST['accion'] === 'crear_tema') {
         $stmt = $db->prepare("INSERT INTO foro_temas (materia_id, usuario_id, titulo, contenido) VALUES (?,?,?,?)");
         $stmt->execute([intval($_POST['materia_id']), $userId, trim($_POST['titulo']), trim($_POST['contenido'])]);
@@ -34,8 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
 }
 
 // Eliminar tema
-if (isset($_GET['eliminar_tema'])) {
-    $id = intval($_GET['eliminar_tema']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'eliminar_tema') {
+    requireValidCsrfToken();
+    $id = intval($_POST['tema_id'] ?? 0);
     $stmt = $db->prepare("DELETE FROM foro_temas WHERE id = ? AND usuario_id = ?");
     $stmt->execute([$id, $userId]);
     setFlashMessage('success', 'Tema eliminado.');
@@ -106,7 +108,12 @@ include __DIR__ . '/../includes/header.php';
                 <?php if ($tema['usuario_id'] == $userId): ?>
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-primary" onclick='editarTema(<?php echo htmlspecialchars(json_encode($tema), ENT_QUOTES, "UTF-8"); ?>)'><i class="bi bi-pencil"></i></button>
-                    <a class="btn btn-sm btn-outline-danger" href="?eliminar_tema=<?php echo $tema['id']; ?>" onclick="return confirm('¿Eliminar este tema y todas sus respuestas?')"><i class="bi bi-trash"></i></a>
+                    <form method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar este tema y todas sus respuestas?')">
+                        <?php echo csrfInput(); ?>
+                        <input type="hidden" name="accion" value="eliminar_tema">
+                        <input type="hidden" name="tema_id" value="<?php echo $tema['id']; ?>">
+                        <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
+                    </form>
                 </div>
                 <?php endif; ?>
             </div>
@@ -137,6 +144,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="card mt-3">
         <div class="card-body">
             <form method="POST">
+                <?php echo csrfInput(); ?>
                 <input type="hidden" name="accion" value="responder">
                 <input type="hidden" name="tema_id" value="<?php echo $verTema; ?>">
                 <div class="mb-3">
@@ -176,7 +184,12 @@ include __DIR__ . '/../includes/header.php';
                     <span class="badge bg-secondary rounded-pill"><?php echo $t['total_respuestas']; ?> <i class="bi bi-chat"></i></span>
                     <?php if ($t['usuario_id'] == $userId): ?>
                     <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-outline-danger" href="?eliminar_tema=<?php echo $t['id']; ?>" onclick="return confirm('¿Eliminar este tema?'); event.stopPropagation();" title="Eliminar"><i class="bi bi-trash"></i></a>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar este tema?')">
+                            <?php echo csrfInput(); ?>
+                            <input type="hidden" name="accion" value="eliminar_tema">
+                            <input type="hidden" name="tema_id" value="<?php echo $t['id']; ?>">
+                            <button class="btn btn-sm btn-outline-danger" type="submit" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -190,6 +203,7 @@ include __DIR__ . '/../includes/header.php';
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="POST" id="formTema">
+                    <?php echo csrfInput(); ?>
                     <input type="hidden" name="accion" id="temaAccion" value="crear_tema">
                     <input type="hidden" name="tema_id" id="temaId" value="0">
                     <div class="modal-header">

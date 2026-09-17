@@ -38,6 +38,7 @@
 
 <!-- html2pdf JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="<?php echo assetUrl('js/rich-text-editor.js'); ?>"></script>
 
 <!-- Custom JS -->
 <script>

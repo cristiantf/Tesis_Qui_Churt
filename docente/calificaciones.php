@@ -13,6 +13,7 @@ $materiaId = intval($_GET['materia'] ?? 0);
 
 // Calificar entrega
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
     $entrega_id = intval($_POST['entrega_id']);
     $nota = floatval($_POST['nota']);
     $retroalimentacion = trim($_POST['retroalimentacion'] ?? '');
@@ -145,6 +146,7 @@ include __DIR__ . '/../includes/header.php';
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <form method="POST">
+                                        <?php echo csrfInput(); ?>
                                         <input type="hidden" name="entrega_id" value="<?php echo $e['id']; ?>">
                                         <div class="modal-header">
                                             <h5 class="modal-title"><i class="bi bi-clipboard-check me-2"></i>Calificar Entrega</h5>

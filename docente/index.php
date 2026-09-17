@@ -9,18 +9,44 @@ requireRole('docente');
 $db = getDB();
 $userId = $_SESSION['user_id'];
 
-// Materias asignadas
-$materias = $db->query("
-    SELECT DISTINCT m.* 
-    FROM materias m 
-    JOIN materia_curso mc ON m.id = mc.materia_id 
-    WHERE mc.docente_id = $userId
-")->fetchAll();
+// Materias asignadas al docente (con sus paralelos)
+$materiasConParalelos = $db->prepare("
+    SELECT m.id, m.nombre, m.descripcion, m.imagen, m.estado,
+           mc.grado, mc.paralelo
+    FROM materias m
+    JOIN materia_curso mc ON m.id = mc.materia_id
+    WHERE mc.docente_id = ? AND m.estado = 1
+    ORDER BY m.nombre, mc.grado, mc.paralelo
+");
+$materiasConParalelos->execute([$userId]);
+$materiasConParalelosAll = $materiasConParalelos->fetchAll(PDO::FETCH_ASSOC);
 
+// Agrupar por materia para el dashboard
+$materiasAgrupadas = [];
+foreach ($materiasConParalelosAll as $row) {
+    $mid = $row['id'];
+    if (!isset($materiasAgrupadas[$mid])) {
+        $materiasAgrupadas[$mid] = [
+            'id' => $row['id'],
+            'nombre' => $row['nombre'],
+            'descripcion' => $row['descripcion'],
+            'imagen' => $row['imagen'],
+            'estado' => $row['estado'],
+            'paralelos' => []
+        ];
+    }
+    $materiasAgrupadas[$mid]['paralelos'][] = [
+        'grado' => $row['grado'],
+        'paralelo' => $row['paralelo']
+    ];
+}
+
+// Compatibilidad: lista plana de materias únicas
+$materias = array_values($materiasAgrupadas);
 $materiasIds = array_column($materias, 'id');
 $inClause = $materiasIds ? implode(',', $materiasIds) : '0';
 
-// Cursos y paralelos asignados
+// Todos los cursos/paralelos asignados (para estadísticas)
 $cursoParalelosData = $db->prepare("SELECT DISTINCT grado, paralelo FROM materia_curso WHERE docente_id = ? ORDER BY grado, paralelo");
 $cursoParalelosData->execute([$userId]);
 $cursoParalelos = $cursoParalelosData->fetchAll(PDO::FETCH_ASSOC);
@@ -59,9 +85,10 @@ include __DIR__ . '/../includes/header.php';
                 <a href="<?php echo BASE_URL; ?>/docente/actividades.php?nueva=1" class="btn btn-secondary">
                     <i class="bi bi-plus-lg me-1"></i>Nueva Actividad
                 </a>
-                <a href="<?php echo BASE_URL; ?>/logout.php" class="btn btn-outline-light">
-                    <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
-                </a>
+                <form method="POST" action="<?php echo BASE_URL; ?>/logout.php" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="<?php echo csrfToken(); ?>">
+                    <button type="submit" class="btn btn-outline-light"><i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión</button>
+                </form>
             </div>
         </div>
     </div>
@@ -141,30 +168,22 @@ include __DIR__ . '/../includes/header.php';
                         <p class="small">El administrador debe asignarte materias.</p>
                     </div>
                     <?php else: ?>
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        <?php foreach ($materias as $m): ?>
-                        <a href="<?php echo BASE_URL; ?>/docente/materia.php?id=<?php echo $m['id']; ?>" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-book me-1"></i><?php echo sanitize($m['nombre']); ?>
-                        </a>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if (empty($cursoParalelos)): ?>
-                    <div class="alert alert-warning mb-0">
-                        <i class="bi bi-exclamation-triangle me-2"></i>No tienes cursos/paralelos asignados aún.
-                    </div>
-                    <?php else: ?>
-                    <div class="border rounded p-3 bg-light">
-                        <div class="fw-semibold mb-2"><i class="bi bi-grid-1x2 me-2"></i>Paralelos asignados</div>
+                    <?php foreach ($materias as $m): ?>
+                    <div class="border rounded p-3 mb-3 bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <a href="<?php echo BASE_URL; ?>/docente/materia.php?id=<?php echo $m['id']; ?>" class="fw-bold text-decoration-none">
+                                <i class="bi bi-book me-1"></i><?php echo sanitize($m['nombre']); ?>
+                            </a>
+                        </div>
                         <div class="d-flex flex-wrap gap-2">
-                            <?php foreach ($cursoParalelos as $cp): ?>
+                            <?php foreach ($m['paralelos'] as $cp): ?>
                             <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
                                 <?php echo intval($cp['grado']) . '° - ' . sanitize($cp['paralelo']); ?>
                             </span>
                             <?php endforeach; ?>
                         </div>
                     </div>
+                    <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -201,30 +220,39 @@ include __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <!-- Acceso directo por materia -->
-    <?php $todasMaterias = $db->query("SELECT * FROM materias WHERE estado = 1 ORDER BY nombre")->fetchAll(); ?>
-    <?php if (!empty($todasMaterias)): ?>
-    <div class="mb-3">
+    <!-- Acceso directo por materia (solo asignadas) -->
+    <?php if (!empty($materias)): ?>
+    <div class="mb-3 mt-4">
         <h5 class="section-title"><i class="bi bi-book me-2"></i>Acceso por materia</h5>
-        <p class="section-subtitle">Cada asignatura ofrece recursos visuales, actividades y seguimiento para impulsar la participación estudiantil.</p>
+        <p class="section-subtitle">Gestiona las asignaturas que tienes asignadas con sus respectivos paralelos.</p>
     </div>
     <div class="row g-4">
-        <?php foreach ($todasMaterias as $m): 
-            $asignada = in_array($m['id'], $materiasIds);
-            $descripcionMateria = !empty(trim($m['descripcion'])) ? sanitize($m['descripcion']) : 'Explora recursos, evaluaciones y tareas para fortalecer el aprendizaje en esta asignatura.';
+        <?php foreach ($materias as $m): 
+            $descripcionMateria = !empty(trim($m['descripcion'] ?? '')) ? sanitize($m['descripcion']) : 'Explora recursos, evaluaciones y tareas para fortalecer el aprendizaje en esta asignatura.';
             $tituloMateria = sanitize($m['nombre']);
+            // Listar paralelos como texto
+            $paralelosTexto = array_map(function($cp) {
+                return intval($cp['grado']) . '°' . $cp['paralelo'];
+            }, $m['paralelos']);
         ?>
         <div class="col-md-6">
             <a href="<?php echo BASE_URL; ?>/docente/materia.php?id=<?php echo $m['id']; ?>" class="text-decoration-none">
                 <div class="subject-access-card">
-                    <img src="<?php echo getMateriaImageUrl($m['imagen']); ?>" alt="<?php echo $tituloMateria; ?>">
+                    <img src="<?php echo getMateriaImageUrl($m['imagen'] ?? ''); ?>" alt="<?php echo $tituloMateria; ?>">
                     <div class="subject-overlay">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="fw-bold mb-0"><i class="<?php echo getMateriaIcon($m['nombre']); ?> me-2"></i><?php echo $tituloMateria; ?></h5>
-                            <span class="badge bg-light text-dark"><?php echo $asignada ? 'Asignada' : 'Vista'; ?></span>
+                            <span class="badge bg-light text-dark">Asignada</span>
                         </div>
                         <p class="small mb-2" style="max-width: 90%;"><?php echo $descripcionMateria; ?></p>
-                        <small><?php echo $asignada ? 'Gestiona clases, tareas y seguimiento desde aquí.' : 'Revisa el contenido y prepara actividades para tus estudiantes.'; ?></small>
+                        <div class="d-flex flex-wrap gap-1 mb-1">
+                            <?php foreach ($m['paralelos'] as $cp): ?>
+                            <span class="badge bg-light bg-opacity-75 text-dark" style="font-size:.7rem;">
+                                <?php echo intval($cp['grado']) . '° - ' . sanitize($cp['paralelo']); ?>
+                            </span>
+                            <?php endforeach; ?>
+                        </div>
+                        <small>Gestiona clases, tareas y seguimiento desde aquí.</small>
                     </div>
                 </div>
             </a>

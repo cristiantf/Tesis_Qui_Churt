@@ -12,6 +12,7 @@ $error = '';
 $formData = ['nombre' => '', 'apellido' => '', 'email' => '', 'rol' => 'estudiante', 'grado' => '', 'paralelo' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
     $formData['nombre'] = trim($_POST['nombre'] ?? '');
     $formData['apellido'] = trim($_POST['apellido'] ?? '');
     $formData['email'] = trim($_POST['email'] ?? '');
@@ -99,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
 
                         <form method="POST" action="">
+                            <?php echo csrfInput(); ?>
                             <div class="row g-3">
                                 <div class="col-6">
                                     <label class="form-label fw-semibold small">

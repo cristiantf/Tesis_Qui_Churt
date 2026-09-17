@@ -19,8 +19,9 @@ $clases = $db->query("
 ")->fetchAll();
 
 // Eliminar recurso
-if (isset($_GET['eliminar'])) {
-    $id = intval($_GET['eliminar']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'eliminar') {
+    requireValidCsrfToken();
+    $id = intval($_POST['id'] ?? 0);
     $recurso = $db->prepare("SELECT archivo FROM recursos WHERE id = ? AND docente_id = ?");
     $recurso->execute([$id, $userId]);
     $rec = $recurso->fetch();
@@ -35,24 +36,43 @@ if (isset($_GET['eliminar'])) {
 }
 
 // Subir recurso
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') !== 'eliminar') {
+    requireValidCsrfToken();
     $claseSeleccionada = explode('_', $_POST['clase_id']);
     $materia_id = intval($claseSeleccionada[0] ?? 0);
     $grado = intval($claseSeleccionada[1] ?? 0);
     $paralelo = trim($claseSeleccionada[2] ?? '');
     $titulo = trim($_POST['titulo']);
-    $descripcion = trim($_POST['descripcion'] ?? '');
-    $tipo = $_POST['tipo'];
+    $descripcion = sanitizeRichText($_POST['descripcion'] ?? '');
+    $tipo = $_POST['tipo'] ?? '';
     
     $archivo = '';
     if ($tipo === 'enlace') {
         $archivo = trim($_POST['enlace'] ?? '');
-    } elseif (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === 0) {
+        $scheme = strtolower((string) parse_url($archivo, PHP_URL_SCHEME));
+        if (!filter_var($archivo, FILTER_VALIDATE_URL) || !in_array($scheme, ['http', 'https'], true)) {
+            setFlashMessage('danger', 'El enlace debe ser una URL HTTP o HTTPS válida.');
+            header('Location: ' . BASE_URL . '/docente/recursos.php');
+            exit;
+        }
+    } elseif (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
         $uploadDir = BASE_PATH . '/uploads/recursos/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-        $ext = pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION);
-        $archivo = uniqid('rec_') . '.' . $ext;
-        move_uploaded_file($_FILES['archivo']['tmp_name'], $uploadDir . $archivo);
+        $allowedTypes = ['application/pdf' => 'pdf', 'application/msword' => 'doc', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx', 'application/vnd.ms-powerpoint' => 'ppt', 'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx', 'image/jpeg' => 'jpg', 'image/png' => 'png'];
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['archivo']['tmp_name']);
+        if ($_FILES['archivo']['size'] > 10 * 1024 * 1024 || !isset($allowedTypes[$mime])) {
+            setFlashMessage('danger', 'Archivo no permitido. Solo PDF, Word, PowerPoint, JPG o PNG de hasta 10 MB.');
+            header('Location: ' . BASE_URL . '/docente/recursos.php');
+            exit;
+        }
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0750, true)) {
+            throw new RuntimeException('No se pudo crear el directorio de recursos.');
+        }
+        $archivo = uniqid('rec_', true) . '.' . $allowedTypes[$mime];
+        if (!move_uploaded_file($_FILES['archivo']['tmp_name'], $uploadDir . $archivo)) {
+            setFlashMessage('danger', 'No se pudo guardar el archivo.');
+            header('Location: ' . BASE_URL . '/docente/recursos.php');
+            exit;
+        }
     }
     
     if ($titulo) {
@@ -112,7 +132,7 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="flex-grow-1">
                         <h6 class="fw-bold mb-1"><?php echo sanitize($r['titulo']); ?></h6>
-                        <p class="text-muted small mb-2"><?php echo sanitize(substr($r['descripcion'], 0, 80)); ?></p>
+                        <p class="text-muted small mb-2"><?php echo sanitize(substr(strip_tags($r['descripcion']), 0, 80)); ?></p>
                         <div class="d-flex gap-2 flex-wrap align-items-center">
                             <span class="badge bg-primary small"><?php echo sanitize($r['materia_nombre']); ?> (<?php echo intval($r['grado']) ? $r['grado'].'° ' : ''; ?><?php echo sanitize($r['paralelo']); ?>)</span>
                             <span class="badge bg-light text-dark small"><?php echo ucfirst($r['tipo']); ?></span>
@@ -132,9 +152,12 @@ include __DIR__ . '/../includes/header.php';
                         <button class="btn btn-outline-primary btn-sm" onclick='editarRecurso(<?php echo htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8"); ?>)' title="Editar">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="confirmarEliminar('?eliminar=<?php echo $r['id']; ?>','<?php echo sanitize($r['titulo']); ?>')" title="Eliminar">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este recurso?')">
+                            <?php echo csrfInput(); ?>
+                            <input type="hidden" name="accion" value="eliminar">
+                            <input type="hidden" name="id" value="<?php echo $r['id']; ?>">
+                            <button class="btn btn-outline-danger btn-sm" type="submit" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -148,6 +171,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" enctype="multipart/form-data">
+                <?php echo csrfInput(); ?>
                 <input type="hidden" name="id" id="recId" value="0">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalRecTitle"><i class="bi bi-cloud-upload me-2"></i>Subir Recurso</h5>
@@ -172,7 +196,7 @@ include __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Descripción</label>
-                        <textarea name="descripcion" id="recDescripcion" class="form-control" rows="2"></textarea>
+                        <textarea name="descripcion" id="recDescripcion" class="form-control" rows="2" data-rich-text></textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Tipo *</label>
@@ -228,7 +252,7 @@ function editarRecurso(r) {
     let claseVal = r.materia_id + '_' + r.grado + '_' + r.paralelo;
     document.getElementById('recClase').value = claseVal;
     document.getElementById('recTitulo').value = r.titulo;
-    document.getElementById('recDescripcion').value = r.descripcion;
+    RichTextEditor.setValue('#recDescripcion', r.descripcion || '');
     document.getElementById('tipoRecurso').value = r.tipo;
     
     if (r.tipo === 'enlace') {

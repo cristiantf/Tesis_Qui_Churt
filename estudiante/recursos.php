@@ -97,7 +97,7 @@ include __DIR__ . '/../includes/header.php';
                         <span class="badge bg-primary small"><?php echo sanitize($r['materia_nombre']); ?></span>
                     </div>
                     <?php if ($r['tipo'] === 'enlace'): ?>
-                    <a href="<?php echo sanitize($r['archivo']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <a href="<?php echo sanitize($r['archivo']); ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Visitar Link
                     </a>
                     <?php else: ?>

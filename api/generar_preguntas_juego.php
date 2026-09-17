@@ -1,12 +1,12 @@
 <?php
 /**
- * Endpoint para generar sugerencias de actividades con Gemini API
+ * Endpoint para generar preguntas de juegos con Gemini API
  */
 
-require_once '../includes/auth.php'; // Includes db, app config, session
+require_once '../includes/auth.php';
 require_once '../config/app.php';
 
-// Check if user is logged in and is a teacher
+// Verificación de autenticación y rol
 if (!isLoggedIn() || getCurrentUser()['rol'] !== 'docente') {
     http_response_code(403);
     echo json_encode(['error' => 'No autorizado']);
@@ -14,10 +14,8 @@ if (!isLoggedIn() || getCurrentUser()['rol'] !== 'docente') {
 }
 
 requireValidCsrfHeader();
-
 header('Content-Type: application/json; charset=utf-8');
 
-// Get POST body
 $data = json_decode(file_get_contents('php://input'), true);
 if (!is_array($data)) {
     http_response_code(400);
@@ -25,20 +23,18 @@ if (!is_array($data)) {
     exit;
 }
 
+$asignatura = $data['asignatura'] ?? '';
 $tema = $data['tema'] ?? '';
-$metodologia = $data['metodologia'] ?? '';
-$grado = $data['grado'] ?? 'alumnos';
+$cantidad = intval($data['cantidad'] ?? 5);
 
-if (empty($tema) || empty($metodologia)) {
+if (empty($asignatura) || empty($tema)) {
     http_response_code(400);
-    echo json_encode(['error' => 'Tema y metodología son obligatorios']);
+    echo json_encode(['error' => 'Asignatura y tema son obligatorios']);
     exit;
 }
 
-// Generate the prompt
-$prompt = "Eres un experto en pedagogía y metodologías activas. Crea una actividad escolar para $grado sobre el tema '$tema' aplicando la metodología '$metodologia'. Devuelve la respuesta ESTRICTAMENTE en formato JSON válido con las siguientes claves: 'titulo' (un título corto y atractivo para la actividad), 'descripcion' (un resumen general de la actividad y su objetivo), e 'instrucciones' (los pasos detallados que deben seguir los estudiantes). No devuelvas nada más que el JSON puro, sin comillas invertidas ni bloques de código.";
+$prompt = "Eres un profesor experto. Crea $cantidad preguntas de opción múltiple sobre el tema '$tema' para la asignatura '$asignatura'. Devuelve la respuesta ESTRICTAMENTE en formato JSON válido que sea un arreglo (array) de objetos. Cada objeto debe tener las siguientes claves exactas: 'pregunta' (el texto de la pregunta), 'opcion_a' (texto opción A), 'opcion_b' (texto opción B), 'opcion_c' (texto opción C), 'opcion_d' (texto opción D), y 'respuesta_correcta' (debe ser 'A', 'B', 'C' o 'D' indicando cuál es la correcta). No devuelvas texto adicional, ni bloques de código markdown, SOLO el JSON válido.";
 
-// Call Gemini API
 $apiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
 
 if (empty($apiKey)) {
@@ -79,7 +75,7 @@ curl_close($ch);
 if ($httpCode !== 200 || $response === false) {
     error_log('Gemini API error: HTTP ' . $httpCode . ' - ' . $error);
     http_response_code(500);
-    echo json_encode(['error' => 'No fue posible generar la actividad. Inténtalo más tarde.']);
+    echo json_encode(['error' => 'No fue posible generar las preguntas. Inténtalo más tarde.']);
     exit;
 }
 
@@ -87,14 +83,13 @@ $result = json_decode($response, true);
 
 if (isset($result['candidates'][0]['content']['parts'][0]['text'])) {
     $aiResponseText = $result['candidates'][0]['content']['parts'][0]['text'];
-
-    // Parse the JSON that Gemini returns
     $aiData = json_decode($aiResponseText, true);
 
-    if (json_last_error() === JSON_ERROR_NONE && isset($aiData['titulo']) && isset($aiData['descripcion']) && isset($aiData['instrucciones'])) {
+    if (json_last_error() === JSON_ERROR_NONE && is_array($aiData)) {
         echo json_encode($aiData);
     } else {
-        echo json_encode(['titulo' => 'Sugerencia generada', 'descripcion' => $aiResponseText]);
+        http_response_code(500);
+        echo json_encode(['error' => 'La IA no devolvió un JSON válido con el formato esperado.', 'raw' => $aiResponseText]);
     }
 } else {
     http_response_code(500);

@@ -134,6 +134,15 @@ include __DIR__ . '/../includes/header.php';
                 </div>
             </a>
         </div>
+        <div class="col-md-4 col-sm-6">
+            <a href="<?php echo BASE_URL; ?>/estudiante/jugar.php?materia_id=<?php echo $materiaId; ?>" class="text-decoration-none">
+                <div class="action-btn-card">
+                    <div class="action-icon"><i class="bi bi-controller"></i></div>
+                    <h6>Juegos Educativos</h6>
+                    <small>Laberintos de conocimiento</small>
+                </div>
+            </a>
+        </div>
     </div>
 
     <div class="text-center mt-4">

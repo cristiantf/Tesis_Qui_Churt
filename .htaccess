@@ -5,10 +5,16 @@
     RewriteRule ^includes/ - [F,L]
     RewriteRule ^database/ - [F,L]
     RewriteRule ^scripts/ - [F,L]
+    RewriteRule ^(install_db|migrate|test_db|check_schema|check_materias|check_materia_refs|check_materia_refs2|fix_db_schema|fix_duplicate_materias)\.php$ - [F,L]
 </IfModule>
 
 # Deshabilitar listado de directorios
 Options -Indexes
+
+# Evitar que secretos, volcados SQL o archivos de entorno queden expuestos.
+<FilesMatch "\.(env|sql|log)$">
+    Require all denied
+</FilesMatch>
 
 # Charset por defecto
 AddDefaultCharset UTF-8

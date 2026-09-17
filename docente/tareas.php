@@ -26,8 +26,9 @@ foreach ($cursoParalelos as $item) {
 }
 
 // Procesar eliminación
-if (isset($_GET['eliminar'])) {
-    $id = intval($_GET['eliminar']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'eliminar') {
+    requireValidCsrfToken();
+    $id = intval($_POST['id'] ?? 0);
     $stmt = $db->prepare("DELETE FROM tareas WHERE id = ? AND docente_id = ?");
     $stmt->execute([$id, $userId]);
     setFlashMessage('success', 'Tarea eliminada correctamente.');
@@ -37,10 +38,14 @@ if (isset($_GET['eliminar'])) {
 
 // Procesar formulario (Crear o Editar)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
+    if (($_POST['accion'] ?? '') === 'eliminar') {
+        exit;
+    }
     $id          = intval($_POST['id'] ?? 0);
     $materia_id  = intval($_POST['materia_id']);
     $titulo      = trim($_POST['titulo']);
-    $descripcion = trim($_POST['descripcion']);
+    $descripcion = sanitizeRichText($_POST['descripcion'] ?? '');
     $cursoParalelo = trim($_POST['curso_paralelo'] ?? '');
     $tipo        = $_POST['tipo'] ?? 'tarea';
     $fecha_entrega = $_POST['fecha_entrega'] ?: null;
@@ -309,10 +314,12 @@ include __DIR__ . '/../includes/header.php';
                                 onclick="editarTarea(<?php echo htmlspecialchars(json_encode($t), ENT_QUOTES); ?>); event.stopPropagation();">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <a class="btn btn-sm btn-outline-danger" href="?eliminar=<?php echo $t['id']; ?>"
-                           onclick="return confirm('¿Seguro que deseas eliminar esta tarea?')">
-                            <i class="bi bi-trash"></i>
-                        </a>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('¿Seguro que deseas eliminar esta tarea?')">
+                            <?php echo csrfInput(); ?>
+                            <input type="hidden" name="accion" value="eliminar">
+                            <input type="hidden" name="id" value="<?php echo $t['id']; ?>">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
                     </div>
                 </div>
 
@@ -348,11 +355,12 @@ include __DIR__ . '/../includes/header.php';
                             onclick="editarTarea(<?php echo htmlspecialchars(json_encode($t), ENT_QUOTES); ?>)">
                         <i class="bi bi-pencil me-1"></i>Editar
                     </button>
-                    <a class="btn btn-sm btn-outline-danger flex-fill"
-                       href="?eliminar=<?php echo $t['id']; ?>"
-                       onclick="return confirm('¿Elimininar esta tarea?')">
-                        <i class="bi bi-trash me-1"></i>Eliminar
-                    </a>
+                    <form method="POST" class="d-inline flex-fill" onsubmit="return confirm('¿Eliminar esta tarea?')">
+                        <?php echo csrfInput(); ?>
+                        <input type="hidden" name="accion" value="eliminar">
+                        <input type="hidden" name="id" value="<?php echo $t['id']; ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash me-1"></i>Eliminar</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -366,6 +374,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius:18px;">
             <form method="POST" id="formTarea">
+                <?php echo csrfInput(); ?>
                 <input type="hidden" name="id" id="tareaId" value="0">
                 <div class="modal-header border-0" style="background: linear-gradient(135deg,#4e73df,#36b9cc); border-radius:18px 18px 0 0; padding:20px 26px;">
                     <h5 class="modal-title text-white fw-bold" id="modalTareaTitle">
@@ -422,7 +431,7 @@ include __DIR__ . '/../includes/header.php';
                         <!-- Descripción -->
                         <div class="col-12">
                             <label class="form-label fw-semibold small">Descripción / Instrucciones</label>
-                            <textarea name="descripcion" id="tareaDescripcion" class="form-control" rows="3"
+                            <textarea name="descripcion" id="tareaDescripcion" class="form-control" rows="3" data-rich-text
                                       placeholder="Describe las instrucciones o detalles de la tarea..."></textarea>
                         </div>
                         <!-- Fecha y Puntaje -->
@@ -495,7 +504,7 @@ function editarTarea(t) {
     document.getElementById('tareaCursoParalelo').value = t.curso && t.paralelo ? (t.curso + '|' + t.paralelo) : '';
     document.getElementById('tareaEstado').value    = t.estado;
     document.getElementById('tareaTitulo').value    = t.titulo;
-    document.getElementById('tareaDescripcion').value = t.descripcion || '';
+    RichTextEditor.setValue('#tareaDescripcion', t.descripcion || '');
     document.getElementById('tareaFecha').value     = t.fecha_entrega ? t.fecha_entrega.substring(0,10) : '';
     document.getElementById('tareaPuntaje').value   = t.puntaje;
     document.getElementById('modalTareaTitle').innerHTML = '<i class="bi bi-pencil-fill me-2"></i>Editar Tarea';
@@ -552,7 +561,13 @@ function solicitarEliminacion() {
         return;
     }
     if (confirm('¿Estás seguro de que deseas eliminar la tarea #' + tareaSeleccionadaId + '?')) {
-        window.location.href = '?eliminar=' + tareaSeleccionadaId;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = '<input type="hidden" name="csrf_token" value="' + document.querySelector('[name=csrf_token]').value + '">' +
+            '<input type="hidden" name="accion" value="eliminar">' +
+            '<input type="hidden" name="id" value="' + tareaSeleccionadaId + '">';
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 

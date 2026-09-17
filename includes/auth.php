@@ -2,7 +2,18 @@
 /**
  * Middleware de autenticación y funciones helper
  */
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_set_cookie_params([
+        'httponly' => true,
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 require_once __DIR__ . '/../config/database.php';
 
@@ -11,6 +22,35 @@ require_once __DIR__ . '/../config/database.php';
  */
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
+}
+
+function csrfToken() {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrfInput() {
+    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') . '">';
+}
+
+function requireValidCsrfToken() {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!is_string($token) || !hash_equals(csrfToken(), $token)) {
+        http_response_code(403);
+        exit('Solicitud no válida. Recarga la página e inténtalo nuevamente.');
+    }
+}
+
+function requireValidCsrfHeader() {
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!is_string($token) || !hash_equals(csrfToken(), $token)) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'Solicitud no válida']);
+        exit;
+    }
 }
 
 /**
@@ -87,6 +127,45 @@ function getFlashMessage() {
  */
 function sanitize($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
+}
+
+/** Permite solo formato editorial seguro proveniente del editor visual. */
+function sanitizeRichText($html) {
+    $html = trim((string) $html);
+    if ($html === '') return '';
+    $allowed = ['div', 'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'ul', 'ol', 'li', 'h3', 'h4', 'span', 'a'];
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    libxml_use_internal_errors(true);
+    $doc->loadHTML('<?xml encoding="utf-8" ?><div>' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+    $root = $doc->getElementsByTagName('div')->item(0);
+    $nodes = [];
+    foreach ($doc->getElementsByTagName('*') as $node) $nodes[] = $node;
+    foreach ($nodes as $node) {
+        if (!in_array(strtolower($node->nodeName), $allowed, true)) {
+            while ($node->firstChild) $node->parentNode->insertBefore($node->firstChild, $node);
+            $node->parentNode->removeChild($node);
+            continue;
+        }
+        $attrs = [];
+        foreach ($node->attributes as $attr) $attrs[] = $attr->nodeName;
+        foreach ($attrs as $name) {
+            $value = $node->getAttribute($name);
+            $keep = ($node->nodeName === 'a' && in_array($name, ['href', 'target', 'rel'], true)) || ($node->nodeName === 'span' && $name === 'style');
+            if (!$keep) $node->removeAttribute($name);
+            if ($name === 'href' && !preg_match('#^https?://#i', $value)) $node->removeAttribute($name);
+            if ($name === 'target' && $value !== '_blank') $node->removeAttribute($name);
+            if ($name === 'style' && !preg_match('/^\s*color\s*:\s*(#[0-9a-f]{3,8}|rgb\([^)]+\)|[a-z]+)\s*;?\s*$/i', $value)) $node->removeAttribute($name);
+        }
+        if ($node->nodeName === 'a' && $node->getAttribute('target') === '_blank') $node->setAttribute('rel', 'noopener noreferrer');
+    }
+    $result = '';
+    foreach ($root->childNodes as $child) $result .= $doc->saveHTML($child);
+    return $result;
+}
+
+function renderRichText($html) {
+    return sanitizeRichText($html);
 }
 
 /**

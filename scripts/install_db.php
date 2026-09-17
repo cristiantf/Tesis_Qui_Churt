@@ -5,13 +5,15 @@
  */
 require_once __DIR__ . '/../config/database.php';
 
+// El instalador puede modificar la base de datos y no debe ejecutarse por web.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    exit('El instalador solo puede ejecutarse desde la línea de comandos.');
+}
+
 header('Content-Type: text/html; charset=utf-8');
 
 $sqlFile = BASE_PATH . '/database/schema.sql';
-if (!file_exists($sqlFile)) {
-    $sqlFile = BASE_PATH . '/database.sql';
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -82,8 +84,6 @@ try {
 }
 
             ?></pre>
-            <a href="<?php echo BASE_URL; ?>/" class="btn btn-primary">Ir al inicio</a>
-            <a href="<?php echo BASE_URL; ?>/login.php" class="btn btn-outline-secondary">Iniciar sesión</a>
         </div>
     </div>
 </div>

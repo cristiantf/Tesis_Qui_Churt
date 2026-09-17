@@ -9,6 +9,7 @@ requireRole('administrador');
 $db = getDB();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
     $configs = $_POST['config'] ?? [];
     foreach ($configs as $clave => $valor) {
         $stmt = $db->prepare("UPDATE configuracion SET valor = ? WHERE clave = ?");
@@ -35,6 +36,7 @@ include __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="card-body">
                     <form method="POST">
+                        <?php echo csrfInput(); ?>
                         <?php foreach ($configuraciones as $config): ?>
                         <div class="mb-4">
                             <label class="form-label fw-semibold">

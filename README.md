@@ -42,15 +42,15 @@ Para los estudiantes se espera mejorar el aprendizaje promoviendo una comprensi�
 
 ## Instalación rápida (XAMPP)
 
-1. **Copiar el proyecto** en `C:\xampp\htdocs\10 de agosto`
+1. **Copiar el proyecto** en `C:\xampp\htdocs\10_DE_AGOSTO`
 2. **Iniciar** Apache y MySQL desde el Panel de Control de XAMPP
 3. **Instalar la base de datos** abriendo:
    ```
-   http://localhost/10%20de%20agosto/install_db.php
+   php scripts/install_db.php
    ```
 4. **Acceder a la plataforma**:
    ```
-   http://localhost/10%20de%20agosto/
+   http://localhost/10_DE_AGOSTO/
    ```
 
 ---
@@ -59,12 +59,12 @@ Para los estudiantes se espera mejorar el aprendizaje promoviendo una comprensi�
 
 | Sección              | URL |
 |----------------------|-----|
-| **Inicio**           | http://localhost/10%20de%20agosto/ |
-| **Iniciar sesión**   | http://localhost/10%20de%20agosto/login.php |
-| **Registro**         | http://localhost/10%20de%20agosto/registro.php |
-| **Panel Admin**      | http://localhost/10%20de%20agosto/admin/ |
-| **Panel Docente**    | http://localhost/10%20de%20agosto/docente/ |
-| **Panel Estudiante** | http://localhost/10%20de%20agosto/estudiante/ |
+| **Inicio**           | http://localhost/10_DE_AGOSTO/ |
+| **Iniciar sesión**   | http://localhost/10_DE_AGOSTO/login.php |
+| **Registro**         | http://localhost/10_DE_AGOSTO/registro.php |
+| **Panel Admin**      | http://localhost/10_DE_AGOSTO/admin/ |
+| **Panel Docente**    | http://localhost/10_DE_AGOSTO/docente/ |
+| **Panel Estudiante** | http://localhost/10_DE_AGOSTO/estudiante/ |
 
 ---
 
@@ -126,7 +126,7 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'plataforma_educativa');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('BASE_URL', '/10%20de%20agosto');
+define('BASE_URL', '/10_DE_AGOSTO');
 ```
 
 ---

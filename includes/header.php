@@ -143,7 +143,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <ul class="dropdown-menu dropdown-menu-end shadow">
                     <li><span class="dropdown-item-text text-muted small"><?php echo ucfirst($user['rol']); ?></span></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/logout.php"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
+                    <li><form method="POST" action="<?php echo BASE_URL; ?>/logout.php"><input type="hidden" name="csrf_token" value="<?php echo csrfToken(); ?>"><button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</button></form></li>
                 </ul>
             </div>
         </div>

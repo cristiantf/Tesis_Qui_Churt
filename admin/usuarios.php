@@ -38,10 +38,11 @@ try {
     // ignore
 }
 
-// Procesar acciones
-if (isset($_GET['accion'])) {
-    $accion = $_GET['accion'];
-    $id = intval($_GET['id'] ?? 0);
+// Procesar acciones que cambian estado (solo POST con CSRF)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
+    requireValidCsrfToken();
+    $accion = $_POST['accion'];
+    $id = intval($_POST['id'] ?? 0);
     
     if ($accion === 'eliminar' && $id > 0 && $id !== $_SESSION['user_id']) {
         $stmt = $db->prepare("DELETE FROM usuarios WHERE id = ? AND id != ?");
@@ -61,7 +62,8 @@ if (isset($_GET['accion'])) {
 }
 
 // Procesar formulario de crear/editar
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['accion'])) {
+    requireValidCsrfToken();
     $id = intval($_POST['id'] ?? 0);
     $nombre = trim($_POST['nombre'] ?? '');
     $apellido = trim($_POST['apellido'] ?? '');
@@ -81,8 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($rol === 'docente') {
         $raw = $_POST['docente_combos'] ?? [];
-        $docenteCombos = array_filter(array_map('strval', (array)$raw));
-        $materiasDocenteSeleccionadas = array_filter(array_map('intval', $_POST['materias_docente'] ?? []));
+        foreach (array_unique(array_filter(array_map('strval', (array)$raw))) as $combo) {
+            [$gradoCombo, $paraleloCombo] = array_pad(explode('|', $combo, 2), 2, '');
+            $gradoCombo = intval($gradoCombo);
+            $paraleloCombo = strtoupper(trim($paraleloCombo));
+            if (in_array($gradoCombo, GRADOS, true) && in_array($paraleloCombo, PARALELOS, true)) {
+                $docenteCombos[] = [$gradoCombo, $paraleloCombo];
+            }
+        }
     }
 
     if (empty($nombre) || empty($apellido) || empty($email)) {
@@ -91,6 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlashMessage('danger', 'Selecciona grado y paralelo para estudiantes.');
     } elseif ($rol === 'estudiante' && (!in_array($grado, GRADOS, true) || !in_array($paralelo, PARALELOS, true))) {
         setFlashMessage('danger', 'Grado o paralelo no válidos.');
+    } elseif ($rol === 'docente' && empty($docenteCombos)) {
+        setFlashMessage('danger', 'Asigna al menos un curso y paralelo al docente.');
     } else {
         if ($id > 0) {
             // Editar
@@ -102,7 +112,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("UPDATE usuarios SET nombre=?, apellido=?, email=?, rol=?, grado=?, paralelo=? WHERE id=?");
                 $stmt->execute([$nombre, $apellido, $email, $rol, $grado, $paralelo, $id]);
             }
-            // Eliminar asignaciones masivas de docente; ahora se gestionan en Asignar Clases.
+            $db->prepare("DELETE FROM docente_curso_paralelo WHERE docente_id = ?")->execute([$id]);
+            if ($rol === 'docente') {
+                $asignarCurso = $db->prepare("INSERT INTO docente_curso_paralelo (docente_id, grado, paralelo) VALUES (?, ?, ?)");
+                foreach ($docenteCombos as [$gradoDocente, $paraleloDocente]) {
+                    $asignarCurso->execute([$id, $gradoDocente, $paraleloDocente]);
+                }
+            }
             setFlashMessage('success', 'Usuario actualizado correctamente.');
         } else {
             // Crear
@@ -120,7 +136,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 if ($rol === 'docente') {
-                    // La asignación de materias se hace ahora desde Asignar Clases.
+                    $asignarCurso = $db->prepare("INSERT INTO docente_curso_paralelo (docente_id, grado, paralelo) VALUES (?, ?, ?)");
+                    foreach ($docenteCombos as [$gradoDocente, $paraleloDocente]) {
+                        $asignarCurso->execute([$newUserId, $gradoDocente, $paraleloDocente]);
+                    }
                 }
                 setFlashMessage('success', 'Usuario creado correctamente.');
             }
@@ -166,7 +185,7 @@ foreach ($materiasDocenteAsignadas as $asignacion) {
 }
 
 // Obtener asignaciones de docente (grado + paralelo)
-$docenteAsignaciones = $db->query("SELECT DISTINCT docente_id, grado, paralelo FROM materia_curso")->fetchAll();
+$docenteAsignaciones = $db->query("SELECT docente_id, grado, paralelo FROM docente_curso_paralelo ORDER BY grado, paralelo")->fetchAll();
 // construir combos 'grado|paralelo' por docente para el JS
 $docenteCombosById = [];
 foreach ($docenteAsignaciones as $d) {
@@ -280,13 +299,21 @@ include __DIR__ . '/../includes/header.php';
                                     <button class="btn btn-outline-primary" onclick="editarUsuario(<?php echo htmlspecialchars(json_encode($u)); ?>)" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <a href="?accion=toggleEstado&id=<?php echo $u['id']; ?>" class="btn btn-outline-<?php echo $u['estado']?'warning':'success'; ?>" title="<?php echo $u['estado']?'Desactivar':'Activar'; ?>">
+                                    <form method="POST" class="d-inline">
+                                        <?php echo csrfInput(); ?>
+                                        <input type="hidden" name="accion" value="toggleEstado">
+                                        <input type="hidden" name="id" value="<?php echo $u['id']; ?>">
+                                        <button type="submit" class="btn btn-outline-<?php echo $u['estado']?'warning':'success'; ?>" title="<?php echo $u['estado']?'Desactivar':'Activar'; ?>">
                                         <i class="bi bi-<?php echo $u['estado']?'pause':'play'; ?>"></i>
-                                    </a>
+                                        </button>
+                                    </form>
                                     <?php if ($u['id'] !== $_SESSION['user_id']): ?>
-                                    <button class="btn btn-outline-danger" onclick="confirmarEliminar('?accion=eliminar&id=<?php echo $u['id']; ?>', '<?php echo sanitize($u['nombre']); ?>')" title="Eliminar">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar este usuario?')">
+                                        <?php echo csrfInput(); ?>
+                                        <input type="hidden" name="accion" value="eliminar">
+                                        <input type="hidden" name="id" value="<?php echo $u['id']; ?>">
+                                        <button type="submit" class="btn btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -304,6 +331,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST">
+                <?php echo csrfInput(); ?>
                 <input type="hidden" name="id" id="userId" value="0">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalTitle"><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</h5>
@@ -365,9 +393,14 @@ include __DIR__ . '/../includes/header.php';
                             <small class="text-muted">Selecciona una o ambas materias para este estudiante.</small>
                         </div>
                         <div class="col-12 docente-fields" style="display:none;">
-                            <div class="alert alert-info py-2 mb-0 mt-2">
-                                <i class="bi bi-info-circle me-1"></i> La asignación de materias, cursos y paralelos a este docente se realiza en la sección <a href="asignar_materias.php" class="alert-link">Asignación de Clases</a>.
+                            <label class="form-label fw-semibold small">Cursos y paralelos asignados</label>
+                            <div class="input-group mb-2">
+                                <select id="docenteGrado" class="form-select"><option value="">Curso...</option><?php foreach (GRADOS as $g): ?><option value="<?php echo $g; ?>"><?php echo $g; ?>° grado</option><?php endforeach; ?></select>
+                                <select id="docenteParalelo" class="form-select"><option value="">Paralelo...</option><?php foreach (PARALELOS as $p): ?><option value="<?php echo $p; ?>"><?php echo $p; ?></option><?php endforeach; ?></select>
+                                <button type="button" class="btn btn-outline-primary" onclick="agregarCursoDocente()"><i class="bi bi-plus-lg"></i> Agregar</button>
                             </div>
+                            <div id="docenteCursosAsignados" class="d-flex flex-wrap gap-2"></div>
+                            <small class="text-muted d-block mt-2">Estos cursos habilitan la creación de tareas. Las materias se asignan desde <a href="asignar_materias.php">Asignación de Clases</a>.</small>
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold small">Contraseña</label>
@@ -400,6 +433,7 @@ function limpiarFormulario() {
     if (materiasContainer) {
         Array.from(materiasContainer.querySelectorAll('input[type="checkbox"]')).forEach(function(opt) { opt.checked = false; });
     }
+    renderCursosDocente([]);
     toggleEstudianteFields();
 }
 
@@ -425,6 +459,34 @@ function toggleEstudianteFields() {
     });
 }
 
+function renderCursosDocente(combos) {
+    var container = document.getElementById('docenteCursosAsignados');
+    if (!container) return;
+    container.innerHTML = '';
+    combos.forEach(function(combo) {
+        var parts = combo.split('|');
+        if (parts.length !== 2) return;
+        var badge = document.createElement('span');
+        badge.className = 'badge bg-primary d-inline-flex align-items-center gap-1 p-2';
+        badge.innerHTML = parts[0] + '° ' + parts[1] + '<input type="hidden" name="docente_combos[]" value="' + combo + '"><button type="button" class="btn-close btn-close-white ms-1" aria-label="Quitar"></button>';
+        badge.querySelector('button').addEventListener('click', function() { badge.remove(); });
+        container.appendChild(badge);
+    });
+}
+
+function agregarCursoDocente() {
+    var grado = document.getElementById('docenteGrado').value;
+    var paralelo = document.getElementById('docenteParalelo').value;
+    if (!grado || !paralelo) { alert('Selecciona un curso y un paralelo.'); return; }
+    var combo = grado + '|' + paralelo;
+    var actuales = Array.from(document.querySelectorAll('#docenteCursosAsignados input')).map(function(input) { return input.value; });
+    if (actuales.includes(combo)) { alert('Este curso y paralelo ya está asignado.'); return; }
+    actuales.push(combo);
+    renderCursosDocente(actuales);
+    document.getElementById('docenteGrado').value = '';
+    document.getElementById('docenteParalelo').value = '';
+}
+
 function editarUsuario(user) {
     document.getElementById('userId').value = user.id;
     document.getElementById('userNombre').value = user.nombre;
@@ -444,6 +506,7 @@ function editarUsuario(user) {
             opt.checked = selectedMaterias.includes(parseInt(opt.value, 10));
         });
     }
+    renderCursosDocente(window.docenteAsignacionesById[user.id] || []);
     new bootstrap.Modal(document.getElementById('modalUsuario')).show();
 }
 var materiasAsignadasByStudent = <?php echo json_encode($materiasAsignadasByStudent); ?>;

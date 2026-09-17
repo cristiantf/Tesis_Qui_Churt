@@ -11,7 +11,34 @@ define('APP_VERSION', '1.1.0');
 define('GRADOS', [5, 6, 7, 8, 9, 10]);
 define('PARALELOS', ['A', 'B', 'C', 'D']);
 
-define('GEMINI_API_KEY', 'INSERTAR_API_KEY_AQUI');
+/**
+ * Las credenciales nunca se guardan en el repositorio. En desarrollo puede
+ * definirse GEMINI_API_KEY en el entorno de Apache/PHP o en un archivo .env
+ * local (incluido en .gitignore).
+ */
+function loadLocalEnvironment() {
+    $envFile = dirname(__DIR__) . '/.env';
+    if (!is_readable($envFile)) {
+        return;
+    }
+
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || strpos($line, '#') === 0 || strpos($line, '=') === false) {
+            continue;
+        }
+        [$key, $value] = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value, " \t\n\r\0\x0B\"'");
+        if ($key !== '' && getenv($key) === false) {
+            putenv($key . '=' . $value);
+            $_ENV[$key] = $value;
+        }
+    }
+}
+
+loadLocalEnvironment();
+define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
 
 /**
  * Mapeo rol de base de datos → carpeta del módulo

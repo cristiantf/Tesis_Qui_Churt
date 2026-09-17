@@ -1,6 +1,7 @@
 # Archivos de entorno
 .env
 .env.*
+!.env.example
 
 # Uploads generados por usuarios
 uploads/recursos/*

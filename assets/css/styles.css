@@ -983,3 +983,14 @@ body {
     color: rgba(255,255,255,0.85);
     margin-bottom: 0;
 }
+
+.rte-source { display: none; }
+.rich-text-editor { border: 1px solid #ced4da; border-radius: .375rem; overflow: hidden; background: #fff; }
+.rte-toolbar { display: flex; flex-wrap: wrap; gap: .2rem; padding: .35rem; border-bottom: 1px solid #dee2e6; background: #f8f9fa; }
+.rte-button { min-width: 2rem; height: 2rem; padding: .2rem .45rem; border: 0; border-radius: .25rem; background: transparent; color: #212529; }
+.rte-button:hover, .rte-button:focus { background: #dbeafe; color: #0d6efd; }
+.rte-color { width: 2rem; height: 2rem; padding: .15rem; border: 0; background: transparent; cursor: pointer; }
+.rte-content { min-height: 7rem; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; overflow: auto; }
+.rte-content:focus { outline: 0; }
+.rte-content p:last-child, .rte-content ul:last-child, .rte-content ol:last-child { margin-bottom: 0; }
+.rich-text-content p:last-child, .rich-text-content ul:last-child, .rich-text-content ol:last-child { margin-bottom: 0; }

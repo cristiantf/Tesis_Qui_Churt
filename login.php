@@ -11,6 +11,7 @@ if (isLoggedIn()) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     
@@ -23,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
         
         if ($user && password_verify($password, $user['password'])) {
+            session_regenerate_id(true);
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_nombre'] = $user['nombre'];
             $_SESSION['user_apellido'] = $user['apellido'];
@@ -89,6 +91,7 @@ if (isset($_GET['registro']) && $_GET['registro'] === 'exitoso') {
                         <?php endif; ?>
 
                         <form method="POST" action="">
+                            <?php echo csrfInput(); ?>
                             <div class="mb-3">
                                 <label class="form-label fw-semibold small">
                                     <i class="bi bi-envelope me-1"></i>Correo Electrónico
